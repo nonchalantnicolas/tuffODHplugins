@@ -1,3 +1,10 @@
+-- This plugin contains the following:
+-- OG Gun
+-- Controller+
+-- Water Proof
+-- Coin+
+-- all made by @drowsynicolas
+
 local table_insert = table.insert
 
 local nicolas = {}
@@ -58,9 +65,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local SpectateService = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("SpectateService"))
 
--- ============================
--- OG GUN
--- ============================
 local BLOCKED = {
     ["123606547020560"] = true,
     ["134826825394657"] = true,
@@ -279,9 +283,6 @@ ogSection:AddToggle("Equip/Unequip Gun Sound", function(bool)
     end
 end)
 
--- ============================
--- CONTROLLER+
--- ============================
 local controllerFeatures = {
     fixScoreboard = false,
     perkEnabled = false,
@@ -410,9 +411,6 @@ controllerSection:AddKeybind("Toggle Spectate", "ButtonR3", function()
     end
 end)
 
--- ============================
--- WATER PROOF
--- ============================
 local waterFeatures = {
     waterImmunity = false,
 }
@@ -497,9 +495,6 @@ waterSection:AddToggle("Water Immunity", function(bool)
     end
 end)
 
--- ============================
--- COIN+
--- ============================
 local soundData = {
     enabled = false,
     soundId = nil,
@@ -672,11 +667,7 @@ coinSection:AddTextBox("Enter Custom Coin Collect Sound ID", function(text)
     end
 end)
 
--- ============================
--- CLEANUP
--- ============================
 RootNicolas:GiveTask(function()
-    -- OG Gun cleanup
     ogFeatures.blockAnims = false
     ogFeatures.equipSound = false
     disableBlockAnims()
@@ -686,7 +677,6 @@ RootNicolas:GiveTask(function()
     end
     charData = {}
     
-    -- Controller+ cleanup
     controllerFeatures.fixScoreboard = false
     controllerFeatures.perkEnabled = false
     controllerFeatures.shiftLockEnabled = false
@@ -698,11 +688,9 @@ RootNicolas:GiveTask(function()
         shiftLockConnection = nil
     end
     
-    -- Water Proof cleanup
     waterFeatures.waterImmunity = false
     disableWaterImmunity()
     
-    -- Coin+ cleanup
     disableSoundSystem()
     stopAura()
 end)
