@@ -3,7 +3,7 @@
 -- Controller+
 -- Water Proof
 -- Coin+
--- all made by @drowsynicolas
+-- i dont skid! all made by @drowsynicolas
 
 local table_insert = table.insert
 
