@@ -3,7 +3,7 @@
 -- Controller+
 -- Water Proof
 -- Coin+
--- i dont skid! all made by @drowsynicolas
+-- all made by @drowsynicolas
 
 local table_insert = table.insert
 
@@ -349,7 +349,7 @@ local function enableFixScoreboard()
     
     local pg = LocalPlayer:WaitForChild("PlayerGui")
     
-    scoreboardMaid:GiveTask(pg.ChildAdded:Connect(function(child)
+    scoreboardMaid:GiveTask(pg.ChildAdded:Connect(function(child))
         if child.Name:lower():find("scoreboard") then
             task.wait()
             child:Destroy()
@@ -417,6 +417,7 @@ local waterFeatures = {
 
 local waterMaid = nil
 local modifiedParts = {}
+local waterPartConnections = {}
 
 local function DisableWaterPart(part)
     if part and part:IsA("BasePart") then
@@ -441,23 +442,48 @@ local function RestoreAllParts()
     modifiedParts = {}
 end
 
-local function CheckMaps()
-    if not waterFeatures.waterImmunity then return end
-    
+local function GetWaterPart()
     local yacht = Workspace:FindFirstChild("Yacht")
     if yacht then
         local intereactive = yacht:FindFirstChild("Intereactive")
         if intereactive then
             local water = intereactive:FindFirstChild("Water")
             if water then
-                DisableWaterPart(water:FindFirstChild("WaterPart"))
+                return water:FindFirstChild("WaterPart")
             end
         end
     end
     
     local pier = Workspace:FindFirstChild("Pier")
     if pier then
-        DisableWaterPart(pier:FindFirstChild("Respawn"))
+        return pier:FindFirstChild("Respawn")
+    end
+    
+    return nil
+end
+
+local function MonitorWaterPart(part)
+    if not part or not waterFeatures.waterImmunity then return end
+    
+    DisableWaterPart(part)
+    
+    if not waterPartConnections[part] then
+        waterPartConnections[part] = part.ChildAdded:Connect(function(child)
+            if child:IsA("BasePart") then
+                DisableWaterPart(child)
+            end
+        end)
+        if waterMaid then
+            waterMaid:GiveTask(waterPartConnections[part])
+        end
+    end
+end
+
+local function CheckWaterPart()
+    if not waterFeatures.waterImmunity then return end
+    local part = GetWaterPart()
+    if part then
+        MonitorWaterPart(part)
     end
 end
 
@@ -467,19 +493,25 @@ local function enableWaterImmunity()
         waterMaid = nil
     end
     
+    waterFeatures.waterImmunity = true
     waterMaid = nicolas.new()
+    waterPartConnections = {}
     
-    CheckMaps()
-    
-    waterMaid:GiveTask(Workspace.DescendantAdded:Connect(CheckMaps))
-    waterMaid:GiveTask(Workspace.DescendantRemoved:Connect(CheckMaps))
+    CheckWaterPart()
 end
 
 local function disableWaterImmunity()
+    waterFeatures.waterImmunity = false
+    
     if waterMaid then
         waterMaid:DoCleaning()
         waterMaid = nil
     end
+    
+    for _, conn in pairs(waterPartConnections) do
+        conn:Disconnect()
+    end
+    waterPartConnections = {}
     
     RestoreAllParts()
 end
@@ -487,7 +519,6 @@ end
 local waterSection = shared.AddSection("Water Proof")
 waterSection:AddParagraph("Additional Info", "Makes you immune to water\n\nCredits: @drowsynicolas")
 waterSection:AddToggle("Water Immunity", function(bool)
-    waterFeatures.waterImmunity = bool
     if bool then
         enableWaterImmunity()
     else
