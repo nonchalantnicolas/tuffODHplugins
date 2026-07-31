@@ -349,7 +349,7 @@ local function enableFixScoreboard()
     
     local pg = LocalPlayer:WaitForChild("PlayerGui")
     
-    scoreboardMaid:GiveTask(pg.ChildAdded:Connect(function(child))
+    scoreboardMaid:GiveTask(pg.ChildAdded:Connect(function(child)
         if child.Name:lower():find("scoreboard") then
             task.wait()
             child:Destroy()
