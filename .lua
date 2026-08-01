@@ -349,12 +349,13 @@ local function enableFixScoreboard()
     
     local pg = LocalPlayer:WaitForChild("PlayerGui")
     
-    scoreboardMaid:GiveTask(pg.ChildAdded:Connect(function(child)
+    local conn = pg.ChildAdded:Connect(function(child)
         if child.Name:lower():find("scoreboard") then
             task.wait()
             child:Destroy()
         end
-    end))
+    end)
+    scoreboardMaid:GiveTask(conn)
     
     for _, v in pairs(pg:GetChildren()) do
         if v.Name:lower():find("scoreboard") then
@@ -613,48 +614,58 @@ local function disableSoundSystem()
     table.clear(soundData.monitoredParts)
 end
 
-local auraData = {
-    enabled = false,
-    thread = nil,
-    radius = 8,
-}
+local coinParts = {}
+local auraEnabled = false
+local auraThread = nil
+local radius = 8
 
-local function getCoinContainers()
-    local containers = {}
+local function updateCoinCache()
+    local newCoinParts = {}
     for _, map in ipairs(Workspace:GetChildren()) do
         local container = map:FindFirstChild("CoinContainer")
         if container then
-            table.insert(containers, container)
-        end
-    end
-    return containers
-end
-
-local function getCoinParts(containers)
-    local parts = {}
-    for _, container in ipairs(containers) do
-        for _, descendant in ipairs(container:GetDescendants()) do
-            if descendant:IsA("BasePart") and descendant:FindFirstChild("TouchInterest") then
-                table.insert(parts, descendant)
+            for _, descendant in ipairs(container:GetDescendants()) do
+                if descendant:IsA("BasePart") and descendant:FindFirstChild("TouchInterest") then
+                    table.insert(newCoinParts, descendant)
+                end
             end
         end
     end
-    return parts
+    coinParts = newCoinParts
+end
+
+local function setupContainer(container)
+    container.ChildAdded:Connect(function(child)
+        task.wait()
+        if child:IsA("BasePart") and child:FindFirstChild("TouchInterest") then
+            table.insert(coinParts, child)
+        end
+    end)
+end
+
+local function findCoinContainers()
+    for _, map in ipairs(Workspace:GetChildren()) do
+        local container = map:FindFirstChild("CoinContainer")
+        if container then
+            setupContainer(container)
+        end
+    end
 end
 
 local function collectNearbyCoins()
-    local character = Players.LocalPlayer.Character
+    if not auraEnabled then return end
+    
+    local character = LocalPlayer.Character
     if not character then return end
     
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return end
     
     local rootPos = rootPart.Position
-    local containers = getCoinContainers()
-    local coinParts = getCoinParts(containers)
+    local radiusSquared = radius * radius
     
     for _, part in ipairs(coinParts) do
-        if (rootPos - part.Position).Magnitude <= auraData.radius then
+        if (rootPos - part.Position).MagnitudeSquared <= radiusSquared then
             firetouchinterest(rootPart, part, 0)
             firetouchinterest(rootPart, part, 1)
         end
@@ -662,16 +673,33 @@ local function collectNearbyCoins()
 end
 
 local function startAura()
-    auraData.enabled = true
-    auraData.thread = RunService.Heartbeat:Connect(collectNearbyCoins)
+    if auraThread then
+        auraThread:Disconnect()
+        auraThread = nil
+    end
+    
+    auraEnabled = true
+    updateCoinCache()
+    findCoinContainers()
+    
+    Workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("Model") and obj.Name == "CoinContainer" then
+            task.wait(0.1)
+            setupContainer(obj)
+            updateCoinCache()
+        end
+    end)
+    
+    auraThread = RunService.Heartbeat:Connect(collectNearbyCoins)
 end
 
 local function stopAura()
-    auraData.enabled = false
-    if auraData.thread then
-        auraData.thread:Disconnect()
-        auraData.thread = nil
+    auraEnabled = false
+    if auraThread then
+        auraThread:Disconnect()
+        auraThread = nil
     end
+    coinParts = {}
 end
 
 local coinSection = shared.AddSection("Coin+")
