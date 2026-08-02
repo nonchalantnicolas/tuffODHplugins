@@ -615,39 +615,19 @@ local function disableSoundSystem()
 end
 
 local coinParts = {}
-local auraEnabled = false
-local auraThread = nil
+local auraEnabled = true
 local radius = 8
 
 local function updateCoinCache()
-    local newCoinParts = {}
+    coinParts = {}
     for _, map in ipairs(Workspace:GetChildren()) do
         local container = map:FindFirstChild("CoinContainer")
         if container then
             for _, descendant in ipairs(container:GetDescendants()) do
                 if descendant:IsA("BasePart") and descendant:FindFirstChild("TouchInterest") then
-                    table.insert(newCoinParts, descendant)
+                    table.insert(coinParts, descendant)
                 end
             end
-        end
-    end
-    coinParts = newCoinParts
-end
-
-local function setupContainer(container)
-    container.ChildAdded:Connect(function(child)
-        task.wait()
-        if child:IsA("BasePart") and child:FindFirstChild("TouchInterest") then
-            table.insert(coinParts, child)
-        end
-    end)
-end
-
-local function findCoinContainers()
-    for _, map in ipairs(Workspace:GetChildren()) do
-        local container = map:FindFirstChild("CoinContainer")
-        if container then
-            setupContainer(container)
         end
     end
 end
@@ -662,54 +642,44 @@ local function collectNearbyCoins()
     if not rootPart then return end
     
     local rootPos = rootPart.Position
-    local radiusSquared = radius * radius
-    
     for _, part in ipairs(coinParts) do
-        if (rootPos - part.Position).MagnitudeSquared() <= radiusSquared then
-            firetouchinterest(rootPart, part, 0)
-            firetouchinterest(rootPart, part, 1)
+        if part and part.Parent then
+            if (rootPos - part.Position).Magnitude <= radius then
+                firetouchinterest(rootPart, part, 0)
+                firetouchinterest(rootPart, part, 1)
+            end
         end
     end
 end
 
 local function startAura()
-    if auraThread then
-        auraThread:Disconnect()
-        auraThread = nil
-    end
-    
-    auraEnabled = true
     updateCoinCache()
-    findCoinContainers()
-    
-    Workspace.DescendantAdded:Connect(function(obj)
-        if obj:IsA("Model") and obj.Name == "CoinContainer" then
-            task.wait(0.1)
-            setupContainer(obj)
-            updateCoinCache()
-        end
-    end)
-    
-    auraThread = RunService.Heartbeat:Connect(collectNearbyCoins)
+    RunService.Heartbeat:Connect(collectNearbyCoins)
 end
 
-local function stopAura()
-    auraEnabled = false
-    if auraThread then
-        auraThread:Disconnect()
-        auraThread = nil
+Workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("Model") and obj.Name == "CoinContainer" then
+        task.wait(0.1)
+        updateCoinCache()
+    elseif obj:IsA("BasePart") and obj:FindFirstChild("TouchInterest") then
+        local parent = obj.Parent
+        if parent and parent.Name == "CoinContainer" then
+            table.insert(coinParts, obj)
+        end
     end
-    coinParts = {}
-end
+end)
+
+startAura()
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    updateCoinCache()
+end)
 
 local coinSection = shared.AddSection("Coin+")
 coinSection:AddParagraph("Additional Info", "idk what to put here\n\nCredits: @drowsynicolas")
 coinSection:AddToggle("Coin Aura", function(bool)
-    if bool then
-        startAura()
-    else
-        stopAura()
-    end
+    auraEnabled = bool
 end)
 coinSection:AddToggle("Custom Coin Collect Sound", function(bool)
     if bool then
@@ -751,5 +721,5 @@ RootNicolas:GiveTask(function()
     disableWaterImmunity()
     
     disableSoundSystem()
-    stopAura()
+    auraEnabled = false
 end)
