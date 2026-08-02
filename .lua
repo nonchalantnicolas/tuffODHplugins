@@ -240,9 +240,9 @@ local function enableEquipSound()
         applyOGFeatures(LocalPlayer.Character)
     end
 
-    equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
+    equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character))
         onCharacterAdded(character)
-    end))
+    end)
 end
 
 local function disableEquipSound()
@@ -617,9 +617,17 @@ end
 local coinParts = {}
 local auraEnabled = true
 local radius = 8
+local radiusSquared = radius * radius
+local containerConnections = {}
 
 local function updateCoinCache()
     coinParts = {}
+    
+    for _, conn in pairs(containerConnections) do
+        conn:Disconnect()
+    end
+    containerConnections = {}
+    
     for _, map in ipairs(Workspace:GetChildren()) do
         local container = map:FindFirstChild("CoinContainer")
         if container then
@@ -628,6 +636,14 @@ local function updateCoinCache()
                     table.insert(coinParts, descendant)
                 end
             end
+            
+            local conn = container.ChildAdded:Connect(function(child)
+                task.wait()
+                if child:IsA("BasePart") and child:FindFirstChild("TouchInterest") then
+                    table.insert(coinParts, child)
+                end
+            end)
+            containerConnections[container] = conn
         end
     end
 end
@@ -642,12 +658,16 @@ local function collectNearbyCoins()
     if not rootPart then return end
     
     local rootPos = rootPart.Position
-    for _, part in ipairs(coinParts) do
+    
+    for i = #coinParts, 1, -1 do
+        local part = coinParts[i]
         if part and part.Parent then
-            if (rootPos - part.Position).Magnitude <= radius then
+            if (rootPos - part.Position).MagnitudeSquared <= radiusSquared then
                 firetouchinterest(rootPart, part, 0)
                 firetouchinterest(rootPart, part, 1)
             end
+        else
+            table.remove(coinParts, i)
         end
     end
 end
@@ -661,11 +681,6 @@ Workspace.DescendantAdded:Connect(function(obj)
     if obj:IsA("Model") and obj.Name == "CoinContainer" then
         task.wait(0.1)
         updateCoinCache()
-    elseif obj:IsA("BasePart") and obj:FindFirstChild("TouchInterest") then
-        local parent = obj.Parent
-        if parent and parent.Name == "CoinContainer" then
-            table.insert(coinParts, obj)
-        end
     end
 end)
 
