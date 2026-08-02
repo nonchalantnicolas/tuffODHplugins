@@ -738,3 +738,9 @@ RootNicolas:GiveTask(function()
     disableSoundSystem()
     auraEnabled = false
 end)
+
+end) -- end of pcall
+
+if not success then
+    warn("tuff ODH plugins failed to load: " .. tostring(err))
+end
