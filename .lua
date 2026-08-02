@@ -665,7 +665,7 @@ local function collectNearbyCoins()
     local radiusSquared = radius * radius
     
     for _, part in ipairs(coinParts) do
-        if (rootPos - part.Position).MagnitudeSquared <= radiusSquared then
+        if (rootPos - part.Position).MagnitudeSquared() <= radiusSquared then
             firetouchinterest(rootPart, part, 0)
             firetouchinterest(rootPart, part, 1)
         end
