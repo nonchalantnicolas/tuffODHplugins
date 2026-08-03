@@ -1,12 +1,9 @@
 local table_insert = table.insert
-
 local nicolas = {}
 nicolas.__index = nicolas
-
 function nicolas.new()
     return setmetatable({_tasks = {}, _destroyed = false}, nicolas)
 end
-
 function nicolas:GiveTask(task)
     if self._destroyed then
         self:_cleanupTask(task)
@@ -15,13 +12,11 @@ function nicolas:GiveTask(task)
     table_insert(self._tasks, task)
     return task
 end
-
 function nicolas:GiveTasks(...)
     for _, task in ipairs({...}) do
         self:GiveTask(task)
     end
 end
-
 function nicolas:_cleanupTask(task)
     local taskType = typeof(task)
     if taskType == "RBXScriptConnection" then
@@ -34,7 +29,6 @@ function nicolas:_cleanupTask(task)
         task:Destroy()
     end
 end
-
 function nicolas:DoCleaning()
     if self._destroyed then return end
     self._destroyed = true
@@ -43,21 +37,17 @@ function nicolas:DoCleaning()
     end
     self._tasks = {}
 end
-
 function nicolas:Destroy()
     self:DoCleaning()
 end
-
 local RootNicolas = nicolas.new()
 local shared = odh_shared_plugins
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local SpectateService = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("SpectateService"))
-
 local BLOCKED = {
     ["123606547020560"] = true,
     ["134826825394657"] = true,
@@ -66,15 +56,12 @@ local BLOCKED = {
 }
 local SOUND_ID = "rbxassetid://7158356564"
 local START_OFFSET = 0.3
-
 local ogFeatures = {
     blockAnims = false,
     equipSound = false,
 }
-
 local charData = {}
 local currentSounds = {}
-
 local function cleanCharacter(character)
     local data = charData[character]
     if data then
@@ -88,7 +75,6 @@ local function cleanCharacter(character)
         end
         charData[character] = nil
     end
-
     local sound = currentSounds[character]
     if sound then
         sound:Stop()
@@ -96,7 +82,6 @@ local function cleanCharacter(character)
         currentSounds[character] = nil
     end
 end
-
 local function playSound(character, soundId)
     local existing = currentSounds[character]
     if existing then
@@ -104,19 +89,15 @@ local function playSound(character, soundId)
         existing:Destroy()
         currentSounds[character] = nil
     end
-
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-
     local sound = Instance.new("Sound")
     sound.SoundId = soundId
     sound.Volume = 1
     sound.Parent = hrp
     sound.TimePosition = START_OFFSET
     sound:Play()
-
     currentSounds[character] = sound
-
     sound.Ended:Once(function()
         if currentSounds[character] == sound then
             currentSounds[character] = nil
@@ -124,27 +105,22 @@ local function playSound(character, soundId)
         sound:Destroy()
     end)
 end
-
 local function hookTool(tool, character, nicolasObj)
     if tool.Name ~= "Gun" then return end
-
     local equipConn = tool.Equipped:Connect(function()
         if ogFeatures.equipSound then
             playSound(character, SOUND_ID)
         end
     end)
     nicolasObj:GiveTask(equipConn)
-
     local unequipConn = tool.Unequipped:Connect(function()
         if ogFeatures.equipSound then
             playSound(character, SOUND_ID)
         end
     end)
     nicolasObj:GiveTask(unequipConn)
-
     return equipConn, unequipConn
 end
-
 local function applyOGFeatures(character)
     local data = charData[character]
     if not data then
@@ -153,17 +129,14 @@ local function applyOGFeatures(character)
             equipNicolas = nicolas.new(),
         }
         charData[character] = data
-
         data.animNicolas:GiveTask(character.AncestryChanged:Connect(function()
             if not character.Parent then
                 cleanCharacter(character)
             end
         end))
     end
-
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid then return end
-
     if ogFeatures.blockAnims then
         data.animNicolas:GiveTask(RunService.RenderStepped:Connect(function()
             for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
@@ -177,7 +150,6 @@ local function applyOGFeatures(character)
             end
         end))
     end
-
     if ogFeatures.equipSound then
         for _, child in ipairs(character:GetChildren()) do
             if child:IsA("Tool") then
@@ -191,30 +163,24 @@ local function applyOGFeatures(character)
         end))
     end
 end
-
 local function onCharacterAdded(character)
     character:WaitForChild("Humanoid")
     if ogFeatures.blockAnims or ogFeatures.equipSound then
         applyOGFeatures(character)
     end
 end
-
 local animBlockGlobalNicolas = nicolas.new()
 local equipSoundGlobalNicolas = nicolas.new()
-
 local function enableBlockAnims()
     animBlockGlobalNicolas:DoCleaning()
     animBlockGlobalNicolas = nicolas.new()
-
     if LocalPlayer.Character then
         applyOGFeatures(LocalPlayer.Character)
     end
-
-    animBlockGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character))
+    animBlockGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
         onCharacterAdded(character)
-    end)
+    end))
 end
-
 local function disableBlockAnims()
     animBlockGlobalNicolas:DoCleaning()
     for _, data in pairs(charData) do
@@ -224,20 +190,16 @@ local function disableBlockAnims()
         end
     end
 end
-
 local function enableEquipSound()
     equipSoundGlobalNicolas:DoCleaning()
     equipSoundGlobalNicolas = nicolas.new()
-
     if LocalPlayer.Character then
         applyOGFeatures(LocalPlayer.Character)
     end
-
     equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character))
         onCharacterAdded(character)
     end)
 end
-
 local function disableEquipSound()
     equipSoundGlobalNicolas:DoCleaning()
     for _, data in pairs(charData) do
@@ -252,11 +214,9 @@ local function disableEquipSound()
         currentSounds[character] = nil
     end
 end
-
 if LocalPlayer.Character then
     onCharacterAdded(LocalPlayer.Character)
 end
-
 local ogSection = shared.AddSection("OG Gun")
 ogSection:AddParagraph("Additional Info", "This plugin works for both MM2 and MMV\n\nCredits: @drowsynicolas")
 ogSection:AddToggle("Disable Gun Animations", function(bool)
@@ -275,7 +235,6 @@ ogSection:AddToggle("Equip/Unequip Gun Sound", function(bool)
         disableEquipSound()
     end
 end)
-
 local controllerFeatures = {
     fixScoreboard = false,
     perkEnabled = false,
@@ -283,40 +242,31 @@ local controllerFeatures = {
     spectateKeybinds = false,
     isSpectating = false,
 }
-
 local scoreboardMaid = nil
 local shiftLockConnection = nil
-
 SpectateService.SpectateStarted.Event:Connect(function()
     controllerFeatures.isSpectating = true
 end)
-
 SpectateService.SpectateCancelled.Event:Connect(function()
     controllerFeatures.isSpectating = false
 end)
-
 local function toggleShiftLock()
     local mouseLock = LocalPlayer.PlayerScripts:FindFirstChild("MouseLock")
     if not mouseLock then
         return
     end
-
     local enabled = mouseLock:GetAttribute("Enabled")
     mouseLock:Invoke(not enabled)
 end
-
 local function shiftLockKeybind()
     if controllerFeatures.shiftLockEnabled then
         toggleShiftLock()
     end
 end
-
 local function activatePerk()
     local player = game.Players.LocalPlayer
     local character = player.Character
-
     if not character then return end
-
     for _, perk in ipairs(character:GetChildren()) do
         local activate = perk:FindFirstChild("Activate")
         if activate then
@@ -325,23 +275,18 @@ local function activatePerk()
         end
     end
 end
-
 local function perkKeybind()
     if controllerFeatures.perkEnabled then
         activatePerk()
     end
 end
-
 local function enableFixScoreboard()
     if scoreboardMaid then
         scoreboardMaid:DoCleaning()
         scoreboardMaid = nil
     end
-
     scoreboardMaid = nicolas.new()
-
     local pg = LocalPlayer:WaitForChild("PlayerGui")
-
     local conn = pg.ChildAdded:Connect(function(child)
         if child.Name:lower():find("scoreboard") then
             task.wait()
@@ -349,21 +294,18 @@ local function enableFixScoreboard()
         end
     end)
     scoreboardMaid:GiveTask(conn)
-
     for _, v in pairs(pg:GetChildren()) do
         if v.Name:lower():find("scoreboard") then
             v:Destroy()
         end
     end
 end
-
 local function disableFixScoreboard()
     if scoreboardMaid then
         scoreboardMaid:DoCleaning()
         scoreboardMaid = nil
     end
 end
-
 local controllerSection = shared.AddSection("Controller+")
 controllerSection:AddParagraph("Additional Info", "Gives you a better mobile controller experience.\n\nCredits: @drowsynicolas")
 controllerSection:AddToggle("Fix Scoreboard Bug", function(bool)
@@ -404,15 +346,12 @@ controllerSection:AddKeybind("Toggle Spectate", "ButtonR3", function()
         SpectateService:ToggleSpectate()
     end
 end)
-
 local waterFeatures = {
     waterImmunity = false,
 }
-
 local waterMaid = nil
 local modifiedParts = {}
 local waterPartConnections = {}
-
 local function DisableWaterPart(part)
     if part and part:IsA("BasePart") then
         if not modifiedParts[part] then
@@ -425,7 +364,6 @@ local function DisableWaterPart(part)
         part.CanCollide = false
     end
 end
-
 local function RestoreAllParts()
     for part, originalStates in pairs(modifiedParts) do
         if part and part.Parent then
@@ -435,7 +373,6 @@ local function RestoreAllParts()
     end
     modifiedParts = {}
 end
-
 local function GetWaterPart()
     local yacht = Workspace:FindFirstChild("Yacht")
     if yacht then
@@ -447,20 +384,15 @@ local function GetWaterPart()
             end
         end
     end
-
     local pier = Workspace:FindFirstChild("Pier")
     if pier then
         return pier:FindFirstChild("Respawn")
     end
-
     return nil
 end
-
 local function MonitorWaterPart(part)
     if not part or not waterFeatures.waterImmunity then return end
-
     DisableWaterPart(part)
-
     if not waterPartConnections[part] then
         waterPartConnections[part] = part.ChildAdded:Connect(function(child)
             if child:IsA("BasePart") then
@@ -472,7 +404,6 @@ local function MonitorWaterPart(part)
         end
     end
 end
-
 local function CheckWaterPart()
     if not waterFeatures.waterImmunity then return end
     local part = GetWaterPart()
@@ -480,36 +411,28 @@ local function CheckWaterPart()
         MonitorWaterPart(part)
     end
 end
-
 local function enableWaterImmunity()
     if waterMaid then
         waterMaid:DoCleaning()
         waterMaid = nil
     end
-
     waterFeatures.waterImmunity = true
     waterMaid = nicolas.new()
     waterPartConnections = {}
-
     CheckWaterPart()
 end
-
 local function disableWaterImmunity()
     waterFeatures.waterImmunity = false
-
     if waterMaid then
         waterMaid:DoCleaning()
         waterMaid = nil
     end
-
     for _, conn in pairs(waterPartConnections) do
         conn:Disconnect()
     end
     waterPartConnections = {}
-
     RestoreAllParts()
 end
-
 local waterSection = shared.AddSection("Water Proof")
 waterSection:AddParagraph("Additional Info", "Makes you immune to water\n\nCredits: @drowsynicolas")
 waterSection:AddToggle("Water Immunity", function(bool)
@@ -519,29 +442,24 @@ waterSection:AddToggle("Water Immunity", function(bool)
         disableWaterImmunity()
     end
 end)
-
 local soundData = {
     enabled = false,
     soundId = nil,
     connections = {},
     monitoredParts = {},
 }
-
 local function playReplacementSound(parent)
     if not soundData.soundId or not soundData.enabled then return end
-
     local sound = Instance.new("Sound")
     sound.Name = "ReplacementSound"
     sound.SoundId = soundData.soundId
     sound.Volume = 1
     sound.Parent = parent
     sound:Play()
-
     sound.Ended:Once(function()
         sound:Destroy()
     end)
 end
-
 local function processCoinSound(part)
     for _, child in ipairs(part:GetChildren()) do
         if child:IsA("Sound") and child.Name == "CoinSound" then
@@ -552,13 +470,10 @@ local function processCoinSound(part)
         end
     end
 end
-
 local function monitorPart(part)
     if not part or soundData.monitoredParts[part] then return end
     soundData.monitoredParts[part] = true
-
     processCoinSound(part)
-
     local conn = part.ChildAdded:Connect(function(child)
         if child:IsA("Sound") and child.Name == "CoinSound" then
             child.Volume = 0
@@ -569,7 +484,6 @@ local function monitorPart(part)
     end)
     table.insert(soundData.connections, conn)
 end
-
 local function monitorPlayer(player)
     local function setup(character)
         local hrp = character:WaitForChild("HumanoidRootPart", 5)
@@ -577,27 +491,21 @@ local function monitorPlayer(player)
             monitorPart(hrp)
         end
     end
-
     if player.Character then
         setup(player.Character)
     end
-
     local conn = player.CharacterAdded:Connect(setup)
     table.insert(soundData.connections, conn)
 end
-
 local function enableSoundSystem()
     soundData.enabled = true
     soundData.monitoredParts = {}
-
     for _, player in ipairs(Players:GetPlayers()) do
         monitorPlayer(player)
     end
-
     local playerAdded = Players.PlayerAdded:Connect(monitorPlayer)
     table.insert(soundData.connections, playerAdded)
 end
-
 local function disableSoundSystem()
     soundData.enabled = false
     for _, conn in ipairs(soundData.connections) do
@@ -606,20 +514,16 @@ local function disableSoundSystem()
     table.clear(soundData.connections)
     table.clear(soundData.monitoredParts)
 end
-
 local coinParts = {}
 local auraEnabled = true
 local radius = 8
 local containerConnections = {}
-
 local function updateCoinCache()
     coinParts = {}
-
     for _, conn in pairs(containerConnections) do
         conn:Disconnect()
     end
     containerConnections = {}
-
     for _, map in ipairs(Workspace:GetChildren()) do
         local container = map:FindFirstChild("CoinContainer")
         if container then
@@ -628,7 +532,6 @@ local function updateCoinCache()
                     table.insert(coinParts, descendant)
                 end
             end
-
             local conn = container.ChildAdded:Connect(function(child)
                 task.wait()
                 if child:IsA("BasePart") and child:FindFirstChild("TouchInterest") then
@@ -639,18 +542,13 @@ local function updateCoinCache()
         end
     end
 end
-
 local function collectNearbyCoins()
     if not auraEnabled then return end
-
     local character = LocalPlayer.Character
     if not character then return end
-
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return end
-
     local rootPos = rootPart.Position
-
     for _, part in ipairs(coinParts) do
         if part and part.Parent then
             if (rootPos - part.Position).Magnitude <= radius then
@@ -660,26 +558,21 @@ local function collectNearbyCoins()
         end
     end
 end
-
 local function startAura()
     updateCoinCache()
     RunService.Heartbeat:Connect(collectNearbyCoins)
 end
-
 Workspace.DescendantAdded:Connect(function(obj)
     if obj:IsA("Model") and obj.Name == "CoinContainer" then
         task.wait(0.1)
         updateCoinCache()
     end
 end)
-
 startAura()
-
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
     updateCoinCache()
 end)
-
 local coinSection = shared.AddSection("Coin+")
 coinSection:AddParagraph("Additional Info", "idk what to put here\n\nCredits: @drowsynicolas")
 coinSection:AddToggle("Coin Aura", function(bool)
@@ -699,7 +592,6 @@ coinSection:AddTextBox("Enter Custom Coin Collect Sound ID", function(text)
         shared.Notify("Sound IDs can only contain numbers", 3)
     end
 end)
-
 RootNicolas:GiveTask(function()
     ogFeatures.blockAnims = false
     ogFeatures.equipSound = false
@@ -709,7 +601,6 @@ RootNicolas:GiveTask(function()
         cleanCharacter(character)
     end
     charData = {}
-
     controllerFeatures.fixScoreboard = false
     controllerFeatures.perkEnabled = false
     controllerFeatures.shiftLockEnabled = false
@@ -720,10 +611,8 @@ RootNicolas:GiveTask(function()
         shiftLockConnection:Disconnect()
         shiftLockConnection = nil
     end
-
     waterFeatures.waterImmunity = false
     disableWaterImmunity()
-
     disableSoundSystem()
     auraEnabled = false
 end)
