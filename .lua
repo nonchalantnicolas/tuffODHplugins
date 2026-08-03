@@ -210,9 +210,9 @@ local function enableBlockAnims()
         applyOGFeatures(LocalPlayer.Character)
     end
 
-    animBlockGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
+    animBlockGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character))
         onCharacterAdded(character)
-    end))
+    end)
 end
 
 local function disableBlockAnims()
@@ -233,9 +233,9 @@ local function enableEquipSound()
         applyOGFeatures(LocalPlayer.Character)
     end
 
-    equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
+    equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character))
         onCharacterAdded(character)
-    end))
+    end)
 end
 
 local function disableEquipSound()
@@ -610,7 +610,6 @@ end
 local coinParts = {}
 local auraEnabled = true
 local radius = 8
-local radiusSquared = radius * radius
 local containerConnections = {}
 
 local function updateCoinCache()
@@ -652,15 +651,12 @@ local function collectNearbyCoins()
 
     local rootPos = rootPart.Position
 
-    for i = #coinParts, 1, -1 do
-        local part = coinParts[i]
+    for _, part in ipairs(coinParts) do
         if part and part.Parent then
-            if (rootPos - part.Position).MagnitudeSquared <= radiusSquared then
+            if (rootPos - part.Position).Magnitude <= radius then
                 firetouchinterest(rootPart, part, 0)
                 firetouchinterest(rootPart, part, 1)
             end
-        else
-            table.remove(coinParts, i)
         end
     end
 end
