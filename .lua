@@ -1,9 +1,3 @@
--- This plugin contains the following:
--- OG Gun
--- Controller+
--- Water Proof
--- all made by @drowsynicolas
-
 local table_insert = table.insert
 
 local nicolas = {}
@@ -64,9 +58,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local SpectateService = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("SpectateService"))
 
--- ============================
--- OG GUN
--- ============================
 local BLOCKED = {
     ["123606547020560"] = true,
     ["134826825394657"] = true,
@@ -193,7 +184,7 @@ local function applyOGFeatures(character)
                 hookTool(child, character, data.equipNicolas)
             end
         end
-        data.equipNicolas:GiveTask(character.ChildAdded:Connect(function(child))
+        data.equipNicolas:GiveTask(character.ChildAdded:Connect(function(child)
             if child:IsA("Tool") then
                 hookTool(child, character, data.equipNicolas)
             end
@@ -242,7 +233,7 @@ local function enableEquipSound()
         applyOGFeatures(LocalPlayer.Character)
     end
 
-    equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
+    equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character))
         onCharacterAdded(character)
     end))
 end
@@ -285,9 +276,6 @@ ogSection:AddToggle("Equip/Unequip Gun Sound", function(bool)
     end
 end)
 
--- ============================
--- CONTROLLER+
--- ============================
 local controllerFeatures = {
     fixScoreboard = false,
     perkEnabled = false,
@@ -417,9 +405,6 @@ controllerSection:AddKeybind("Toggle Spectate", "ButtonR3", function()
     end
 end)
 
--- ============================
--- WATER PROOF
--- ============================
 local waterFeatures = {
     waterImmunity = false,
 }
@@ -535,9 +520,6 @@ waterSection:AddToggle("Water Immunity", function(bool)
     end
 end)
 
--- ============================
--- CLEANUP
--- ============================
 RootNicolas:GiveTask(function()
     ogFeatures.blockAnims = false
     ogFeatures.equipSound = false
