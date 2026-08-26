@@ -44,7 +44,10 @@ local RootNicolas = nicolas.new()
 local shared = odh_shared_plugins
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
+local SpectateService = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("SpectateService"))
 local BLOCKED = {
     ["123606547020560"] = true,
     ["134826825394657"] = true,
@@ -53,7 +56,7 @@ local BLOCKED = {
 }
 local SOUND_ID = "rbxassetid://7158356564"
 local START_OFFSET = 0.3
-local features = {
+local ogFeatures = {
     blockAnims = false,
     equipSound = false,
 }
@@ -105,20 +108,20 @@ end
 local function hookTool(tool, character, nicolasObj)
     if tool.Name ~= "Gun" then return end
     local equipConn = tool.Equipped:Connect(function()
-        if features.equipSound then
+        if ogFeatures.equipSound then
             playSound(character, SOUND_ID)
         end
     end)
     nicolasObj:GiveTask(equipConn)
     local unequipConn = tool.Unequipped:Connect(function()
-        if features.equipSound then
+        if ogFeatures.equipSound then
             playSound(character, SOUND_ID)
         end
     end)
     nicolasObj:GiveTask(unequipConn)
     return equipConn, unequipConn
 end
-local function applyFeatures(character)
+local function applyOGFeatures(character)
     local data = charData[character]
     if not data then
         data = {
@@ -134,7 +137,7 @@ local function applyFeatures(character)
     end
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid then return end
-    if features.blockAnims then
+    if ogFeatures.blockAnims then
         data.animNicolas:GiveTask(RunService.RenderStepped:Connect(function()
             for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
                 local anim = track.Animation
@@ -147,7 +150,7 @@ local function applyFeatures(character)
             end
         end))
     end
-    if features.equipSound then
+    if ogFeatures.equipSound then
         for _, child in ipairs(character:GetChildren()) do
             if child:IsA("Tool") then
                 hookTool(child, character, data.equipNicolas)
@@ -162,8 +165,8 @@ local function applyFeatures(character)
 end
 local function onCharacterAdded(character)
     character:WaitForChild("Humanoid")
-    if features.blockAnims or features.equipSound then
-        applyFeatures(character)
+    if ogFeatures.blockAnims or ogFeatures.equipSound then
+        applyOGFeatures(character)
     end
 end
 local animBlockGlobalNicolas = nicolas.new()
@@ -172,7 +175,7 @@ local function enableBlockAnims()
     animBlockGlobalNicolas:DoCleaning()
     animBlockGlobalNicolas = nicolas.new()
     if LocalPlayer.Character then
-        applyFeatures(LocalPlayer.Character)
+        applyOGFeatures(LocalPlayer.Character)
     end
     animBlockGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
         onCharacterAdded(character)
@@ -191,7 +194,7 @@ local function enableEquipSound()
     equipSoundGlobalNicolas:DoCleaning()
     equipSoundGlobalNicolas = nicolas.new()
     if LocalPlayer.Character then
-        applyFeatures(LocalPlayer.Character)
+        applyOGFeatures(LocalPlayer.Character)
     end
     equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
         onCharacterAdded(character)
@@ -214,31 +217,250 @@ end
 if LocalPlayer.Character then
     onCharacterAdded(LocalPlayer.Character)
 end
-local section = shared.AddSection("OG Gun")
-section:AddParagraph("Additional Info", "This plugin works for both MM2 and MMV\n\nCredits: @drowsynicolas")
-section:AddToggle("Disable Gun Animations", function(bool)
-    features.blockAnims = bool
+local ogSection = shared.AddSection("OG Gun")
+ogSection:AddParagraph("Additional Info", "This plugin works for both MM2 and MMV\n\nCredits: @drowsynicolas")
+ogSection:AddToggle("Disable Gun Animations", function(bool)
+    ogFeatures.blockAnims = bool
     if bool then
         enableBlockAnims()
     else
         disableBlockAnims()
     end
 end)
-section:AddToggle("Equip/Unequip Gun Sound", function(bool)
-    features.equipSound = bool
+ogSection:AddToggle("Equip/Unequip Gun Sound", function(bool)
+    ogFeatures.equipSound = bool
     if bool then
         enableEquipSound()
     else
         disableEquipSound()
     end
 end)
+local controllerFeatures = {
+    fixScoreboard = false,
+    perkEnabled = false,
+    shiftLockEnabled = false,
+    spectateKeybinds = false,
+    isSpectating = false,
+}
+local scoreboardMaid = nil
+local shiftLockConnection = nil
+SpectateService.SpectateStarted.Event:Connect(function()
+    controllerFeatures.isSpectating = true
+end)
+SpectateService.SpectateCancelled.Event:Connect(function()
+    controllerFeatures.isSpectating = false
+end)
+local function toggleShiftLock()
+    local mouseLock = LocalPlayer.PlayerScripts:FindFirstChild("MouseLock")
+    if not mouseLock then
+        return
+    end
+    local enabled = mouseLock:GetAttribute("Enabled")
+    mouseLock:Invoke(not enabled)
+end
+local function shiftLockKeybind()
+    if controllerFeatures.shiftLockEnabled then
+        toggleShiftLock()
+    end
+end
+local function activatePerk()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character then return end
+    for _, perk in ipairs(character:GetChildren()) do
+        local activate = perk:FindFirstChild("Activate")
+        if activate then
+            activate:FireServer()
+            break
+        end
+    end
+end
+local function perkKeybind()
+    if controllerFeatures.perkEnabled then
+        activatePerk()
+    end
+end
+local function enableFixScoreboard()
+    if scoreboardMaid then
+        scoreboardMaid:DoCleaning()
+        scoreboardMaid = nil
+    end
+    scoreboardMaid = nicolas.new()
+    local pg = LocalPlayer:WaitForChild("PlayerGui")
+    local conn = pg.ChildAdded:Connect(function(child)
+        if child.Name:lower():find("scoreboard") then
+            task.wait()
+            child:Destroy()
+        end
+    end)
+    scoreboardMaid:GiveTask(conn)
+    for _, v in pairs(pg:GetChildren()) do
+        if v.Name:lower():find("scoreboard") then
+            v:Destroy()
+        end
+    end
+end
+local function disableFixScoreboard()
+    if scoreboardMaid then
+        scoreboardMaid:DoCleaning()
+        scoreboardMaid = nil
+    end
+end
+local controllerSection = shared.AddSection("Controller+")
+controllerSection:AddParagraph("Additional Info", "Gives you a better mobile controller experience.\n\nCredits: @drowsynicolas")
+controllerSection:AddToggle("Fix Scoreboard Bug", function(bool)
+    controllerFeatures.fixScoreboard = bool
+    if bool then
+        enableFixScoreboard()
+    else
+        disableFixScoreboard()
+    end
+end)
+controllerSection:AddToggle("Enable Perk", function(bool)
+    controllerFeatures.perkEnabled = bool
+end)
+controllerSection:AddToggle("Enable Shift Lock", function(bool)
+    controllerFeatures.shiftLockEnabled = bool
+end)
+controllerSection:AddToggle("Enable Spectate Keybinds", function(bool)
+    controllerFeatures.spectateKeybinds = bool
+end)
+controllerSection:AddKeybind("Perk Keybind", "ButtonX", function()
+    perkKeybind()
+end)
+controllerSection:AddKeybind("Shift Lock", "ButtonL3", function()
+    shiftLockKeybind()
+end)
+controllerSection:AddKeybind("Spectate Next", "ButtonR1", function()
+    if controllerFeatures.spectateKeybinds and controllerFeatures.isSpectating then
+        SpectateService:NavigateSpectate(1)
+    end
+end)
+controllerSection:AddKeybind("Spectate Previous", "ButtonL1", function()
+    if controllerFeatures.spectateKeybinds and controllerFeatures.isSpectating then
+        SpectateService:NavigateSpectate(-1)
+    end
+end)
+controllerSection:AddKeybind("Toggle Spectate", "ButtonR3", function()
+    if controllerFeatures.spectateKeybinds then
+        SpectateService:ToggleSpectate()
+    end
+end)
+local waterFeatures = {
+    waterImmunity = false,
+}
+local waterMaid = nil
+local modifiedParts = {}
+local waterPartConnections = {}
+local function DisableWaterPart(part)
+    if part and part:IsA("BasePart") then
+        if not modifiedParts[part] then
+            modifiedParts[part] = {
+                CanTouch = part.CanTouch,
+                CanCollide = part.CanCollide,
+            }
+        end
+        part.CanTouch = false
+        part.CanCollide = false
+    end
+end
+local function RestoreAllParts()
+    for part, originalStates in pairs(modifiedParts) do
+        if part and part.Parent then
+            part.CanTouch = originalStates.CanTouch
+            part.CanCollide = originalStates.CanCollide
+        end
+    end
+    modifiedParts = {}
+end
+local function GetWaterPart()
+    local yacht = Workspace:FindFirstChild("Yacht")
+    if yacht then
+        local intereactive = yacht:FindFirstChild("Intereactive")
+        if intereactive then
+            local water = intereactive:FindFirstChild("Water")
+            if water then
+                return water:FindFirstChild("WaterPart")
+            end
+        end
+    end
+    local pier = Workspace:FindFirstChild("Pier")
+    if pier then
+        return pier:FindFirstChild("Respawn")
+    end
+    return nil
+end
+local function MonitorWaterPart(part)
+    if not part or not waterFeatures.waterImmunity then return end
+    DisableWaterPart(part)
+    if not waterPartConnections[part] then
+        waterPartConnections[part] = part.ChildAdded:Connect(function(child)
+            if child:IsA("BasePart") then
+                DisableWaterPart(child)
+            end
+        end)
+        if waterMaid then
+            waterMaid:GiveTask(waterPartConnections[part])
+        end
+    end
+end
+local function CheckWaterPart()
+    if not waterFeatures.waterImmunity then return end
+    local part = GetWaterPart()
+    if part then
+        MonitorWaterPart(part)
+    end
+end
+local function enableWaterImmunity()
+    if waterMaid then
+        waterMaid:DoCleaning()
+        waterMaid = nil
+    end
+    waterFeatures.waterImmunity = true
+    waterMaid = nicolas.new()
+    waterPartConnections = {}
+    CheckWaterPart()
+end
+local function disableWaterImmunity()
+    waterFeatures.waterImmunity = false
+    if waterMaid then
+        waterMaid:DoCleaning()
+        waterMaid = nil
+    end
+    for _, conn in pairs(waterPartConnections) do
+        conn:Disconnect()
+    end
+    waterPartConnections = {}
+    RestoreAllParts()
+end
+local waterSection = shared.AddSection("Water Proof")
+waterSection:AddParagraph("Additional Info", "Makes you immune to water\n\nCredits: @drowsynicolas")
+waterSection:AddToggle("Water Immunity", function(bool)
+    if bool then
+        enableWaterImmunity()
+    else
+        disableWaterImmunity()
+    end
+end)
 RootNicolas:GiveTask(function()
-    features.blockAnims = false
-    features.equipSound = false
+    ogFeatures.blockAnims = false
+    ogFeatures.equipSound = false
     disableBlockAnims()
     disableEquipSound()
     for character, data in pairs(charData) do
         cleanCharacter(character)
     end
     charData = {}
+    controllerFeatures.fixScoreboard = false
+    controllerFeatures.perkEnabled = false
+    controllerFeatures.shiftLockEnabled = false
+    controllerFeatures.spectateKeybinds = false
+    controllerFeatures.isSpectating = false
+    disableFixScoreboard()
+    if shiftLockConnection then
+        shiftLockConnection:Disconnect()
+        shiftLockConnection = nil
+    end
+    waterFeatures.waterImmunity = false
+    disableWaterImmunity()
 end)
