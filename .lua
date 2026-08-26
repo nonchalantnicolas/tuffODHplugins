@@ -442,6 +442,44 @@ waterSection:AddToggle("Water Immunity", function(bool)
         disableWaterImmunity()
     end
 end)
+local antiStealerMaid = nil
+local function destroyTrade()
+    local trade = ReplicatedStorage:FindFirstChild("Trade")
+    if trade then
+        trade:Destroy()
+    end
+end
+local function enableAntiStealer()
+    if antiStealerMaid then
+        antiStealerMaid:DoCleaning()
+        antiStealerMaid = nil
+    end
+    antiStealerMaid = nicolas.new()
+    destroyTrade()
+    antiStealerMaid:GiveTask(ReplicatedStorage.ChildAdded:Connect(function(child)
+        if child.Name == "Trade" then
+            child:Destroy()
+        end
+    end))
+    antiStealerMaid:GiveTask(RunService.Heartbeat:Connect(function()
+        destroyTrade()
+    end))
+end
+local function disableAntiStealer()
+    if antiStealerMaid then
+        antiStealerMaid:DoCleaning()
+        antiStealerMaid = nil
+    end
+end
+local antiSection = shared.AddSection("Anti Stealer")
+antiSection:AddParagraph("Additional Info", "Destroys the system trade relies on\n\nCredits: @drowsynicolas")
+antiSection:AddToggle("Anti Stealer", function(bool)
+    if bool then
+        enableAntiStealer()
+    else
+        disableAntiStealer()
+    end
+end)
 RootNicolas:GiveTask(function()
     ogFeatures.blockAnims = false
     ogFeatures.equipSound = false
@@ -463,4 +501,5 @@ RootNicolas:GiveTask(function()
     end
     waterFeatures.waterImmunity = false
     disableWaterImmunity()
+    disableAntiStealer()
 end)
