@@ -1,4 +1,3 @@
-
 -- This plugin contains the following:
 -- OG Gun
 -- Controller+
