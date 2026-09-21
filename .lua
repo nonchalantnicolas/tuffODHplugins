@@ -575,6 +575,19 @@ antiSection:AddToggle("Disable Trade", function(bool)
     end
 end)
 
+local messageSection = myTab:AddSection("Client Sided Message", "just for fun")
+messageSection:AddParagraph("Additional Info", "sends a message client sided, u can say anything it'll go through\n\nCredits: @drowsynicolas")
+local messageText = ""
+messageSection:AddTextBox("Your message", function(text)
+    messageText = text
+end)
+messageSection:AddButton("Send Message", function()
+    if messageText == "" then return end
+    local character = LocalPlayer.Character
+    if not character then return end
+    game:GetService("Chat"):Chat(character, messageText, Enum.ChatColor.White)
+end)
+
 RootNicolas:GiveTask(function()
     ogFeatures.blockAnims = false
     ogFeatures.equipSound = false
