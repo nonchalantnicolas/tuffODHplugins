@@ -43,6 +43,9 @@ end
 
 local RootNicolas = nicolas.new()
 local shared = odh_shared_plugins
+
+local myTab = shared.CreateTab("OG Addon", "/nonchalantnicolas/drowsynicolas-ODH-icon/refs/heads/main/IMG_5786")
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -232,7 +235,7 @@ if LocalPlayer.Character then
     onCharacterAdded(LocalPlayer.Character)
 end
 
-local ogSection = shared.AddSection("OG Gun")
+local ogSection = myTab:AddSection("OG Gun", "Gun Features")
 ogSection:AddParagraph("Additional Info", "This plugin works for both MM2 and MMV\n\nCredits: @drowsynicolas")
 ogSection:AddToggle("Disable Gun Animations", function(bool)
     ogFeatures.blockAnims = bool
@@ -378,7 +381,7 @@ local function disableSpectateUI()
     end
 end
 
-local controllerSection = shared.AddSection("Controller+")
+local controllerSection = myTab:AddSection("Controller+", "Mobile Controller Support")
 controllerSection:AddParagraph("Additional Info", "Gives you a better mobile controller experience.\n\nCredits: @drowsynicolas")
 controllerSection:AddToggle("Fix Scoreboard Bug", function(bool)
     controllerFeatures.fixScoreboard = bool
@@ -519,7 +522,7 @@ local function disableWaterImmunity()
     RestoreAllParts()
 end
 
-local waterSection = shared.AddSection("Water Proof")
+local waterSection = myTab:AddSection("Water Proof", "Water Immunity")
 waterSection:AddParagraph("Additional Info", "Makes you immune to water\n\nCredits: @drowsynicolas")
 waterSection:AddToggle("Water Immunity", function(bool)
     if bool then
@@ -562,7 +565,7 @@ local function disableAntiStealer()
     end
 end
 
-local antiSection = shared.AddSection("Disable Trade")
+local antiSection = myTab:AddSection("Disable Trade", "Trade Blocker")
 antiSection:AddParagraph("Additional Info", "Destroys the system trade relies on\n\nCredits: @drowsynicolas")
 antiSection:AddToggle("Disable Trade", function(bool)
     if bool then
