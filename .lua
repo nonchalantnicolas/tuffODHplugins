@@ -68,8 +68,6 @@ local ogFeatures = {
 }
 local charData = {}
 local currentSounds = {}
-local animPurgeConnections = {}
-local purgedAnimations = {}
 
 local function cleanCharacter(character)
     local data = charData[character]
@@ -116,48 +114,6 @@ local function playSound(character, soundId)
     end)
 end
 
-local function purgeGunAnimations(tool)
-    if not tool or tool.Name ~= "Gun" then return end
-    local anims = tool:FindFirstChild("Animations")
-    if not anims then return end
-    for _, anim in ipairs(anims:GetChildren()) do
-        if anim:IsA("Animation") then
-            local id = anim.AnimationId:match("%d+")
-            if id and BLOCKED[id] then
-                if not purgedAnimations[anim] then
-                    purgedAnimations[anim] = anim.AnimationId
-                end
-                anim.AnimationId = "rbxassetid://0"
-            end
-        end
-    end
-end
-
-local function restoreGunAnimations()
-    for anim, originalId in pairs(purgedAnimations) do
-        if anim and anim.Parent then
-            anim.AnimationId = originalId
-        end
-    end
-    purgedAnimations = {}
-end
-
-local function watchGunContainer(container)
-    if not container then return end
-    for _, child in ipairs(container:GetChildren()) do
-        if child:IsA("Tool") then
-            purgeGunAnimations(child)
-        end
-    end
-    local conn = container.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then
-            task.wait()
-            purgeGunAnimations(child)
-        end
-    end)
-    table.insert(animPurgeConnections, conn)
-end
-
 local function hookTool(tool, character, nicolasObj)
     if tool.Name ~= "Gun" then return end
     local equipConn = tool.Equipped:Connect(function()
@@ -191,6 +147,19 @@ local function applyOGFeatures(character)
     end
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid then return end
+    if ogFeatures.blockAnims then
+        data.animNicolas:GiveTask(RunService.RenderStepped:Connect(function()
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                local anim = track.Animation
+                if anim then
+                    local id = anim.AnimationId:match("%d+")
+                    if BLOCKED[id] then
+                        track:Stop(0)
+                    end
+                end
+            end
+        end))
+    end
     if ogFeatures.equipSound then
         for _, child in ipairs(character:GetChildren()) do
             if child:IsA("Tool") then
@@ -216,29 +185,24 @@ local animBlockGlobalNicolas = nicolas.new()
 local equipSoundGlobalNicolas = nicolas.new()
 
 local function enableBlockAnims()
-    animPurgeConnections = {}
-    purgedAnimations = {}
-    local backpack = LocalPlayer:WaitForChild("Backpack")
-    watchGunContainer(backpack)
+    animBlockGlobalNicolas:DoCleaning()
+    animBlockGlobalNicolas = nicolas.new()
     if LocalPlayer.Character then
-        watchGunContainer(LocalPlayer.Character)
+        applyOGFeatures(LocalPlayer.Character)
     end
-    local charConn = LocalPlayer.CharacterAdded:Connect(function(character)
-        task.wait()
-        if ogFeatures.blockAnims then
-            watchGunContainer(character)
-            watchGunContainer(backpack)
-        end
-    end)
-    table.insert(animPurgeConnections, charConn)
+    animBlockGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
+        onCharacterAdded(character)
+    end))
 end
 
 local function disableBlockAnims()
-    for _, conn in ipairs(animPurgeConnections) do
-        conn:Disconnect()
+    animBlockGlobalNicolas:DoCleaning()
+    for _, data in pairs(charData) do
+        if data.animNicolas then
+            data.animNicolas:DoCleaning()
+            data.animNicolas = nicolas.new()
+        end
     end
-    animPurgeConnections = {}
-    restoreGunAnimations()
 end
 
 local function enableEquipSound()
@@ -670,7 +634,7 @@ local function createServerPosMarker(character)
     serverPosMarker.Name = "ServerPosition"
     serverPosMarker.Size = Vector3.new(2, 2, 1)
     serverPosMarker.Color = serverPosColor
-    serverPosMarker.Material = Enum.Material.Glass
+    serverPosMarker.Material = Enum.Material.Plastic
     serverPosMarker.Transparency = 0.5
     serverPosMarker.Anchored = true
     serverPosMarker.CanCollide = false
