@@ -626,6 +626,9 @@ local function createServerPosClone()
         return false
     end
     serverPosChar.Archivable = true
+    for _, obj in ipairs(serverPosChar:GetDescendants()) do
+        obj.Archivable = true
+    end
     serverPosClone = serverPosChar:Clone()
     if not serverPosClone then
         return false
@@ -654,7 +657,16 @@ local function createServerPosClone()
     end
     local fakeHumanoid = serverPosClone:FindFirstChildOfClass("Humanoid")
     if fakeHumanoid then
-        fakeHumanoid:Destroy()
+        fakeHumanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+        fakeHumanoid.AutoRotate = false
+        fakeHumanoid.PlatformStand = true
+        fakeHumanoid.EvaluateStateMachine = false
+        fakeHumanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+        fakeHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
+        for _, state in ipairs(Enum.HumanoidStateType:GetEnumItems()) do
+            fakeHumanoid:SetStateEnabled(state, false)
+        end
+        fakeHumanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
     end
     serverPosClone.Parent = workspace
     serverPosClone:PivotTo(serverPosChar:GetPivot())
