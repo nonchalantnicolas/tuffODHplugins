@@ -44,7 +44,7 @@ end
 local RootNicolas = nicolas.new()
 local shared = odh_shared_plugins
 
-local myTab = shared.CreateTab("OG Addon", "/nonchalantnicolas/drowsynicolas-ODH-icon/refs/heads/main/IMG_5786")
+local myTab = shared.CreateTab("tuff stuff", "/nonchalantnicolas/drowsynicolas-ODH-icon/refs/heads/main/IMG_5786")
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -565,7 +565,7 @@ local function disableAntiStealer()
     end
 end
 
-local antiSection = myTab:AddSection("Disable Trade", "Trade Blocker")
+local antiSection = myTab:AddSection("Disable Trade", "fucks the trade system")
 antiSection:AddParagraph("Additional Info", "Destroys the system trade relies on\n\nCredits: @drowsynicolas")
 antiSection:AddToggle("Disable Trade", function(bool)
     if bool then
