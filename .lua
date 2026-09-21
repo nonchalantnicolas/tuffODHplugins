@@ -588,6 +588,185 @@ messageSection:AddButton("Send Message", function()
     game:GetService("Chat"):Chat(character, messageText, Enum.ChatColor.White)
 end)
 
+local serverPosSection = myTab:AddSection("Estimated Server Pos", "shows your server pos")
+serverPosSection:AddParagraph("Additional Info", "creates a clone of your character and estimates your delay so you can visually see it\n\nCredits: @drowsynicolas")
+
+local serverPosEnabled = false
+local serverPosClone = nil
+local serverPosConn = nil
+local serverPosHealthConn = nil
+local serverPosCharAddedConn = nil
+local serverPosChar = LocalPlayer.Character
+local serverPosRoot = nil
+local serverPosHumanoid = nil
+local serverPosHistory = {}
+local SERVERPOS_CLONE_TRANSPARENCY = 0.5
+
+local function destroyServerPosClone()
+    if serverPosConn then
+        serverPosConn:Disconnect()
+        serverPosConn = nil
+    end
+    if serverPosHealthConn then
+        serverPosHealthConn:Disconnect()
+        serverPosHealthConn = nil
+    end
+    if serverPosClone then
+        serverPosClone:Destroy()
+        serverPosClone = nil
+    end
+    serverPosHistory = {}
+end
+
+local function createServerPosClone()
+    if serverPosClone then
+        serverPosClone:Destroy()
+    end
+    if not serverPosChar or not serverPosChar.Parent then
+        return false
+    end
+    serverPosChar.Archivable = true
+    serverPosClone = serverPosChar:Clone()
+    if not serverPosClone then
+        return false
+    end
+    serverPosClone.Name = "ServerPosClone"
+    for _, obj in ipairs(serverPosClone:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Anchored = true
+            obj.CanCollide = false
+            obj.CanTouch = false
+            obj.CanQuery = false
+            obj.CastShadow = false
+            obj.Massless = true
+            if obj.Name == "HumanoidRootPart" then
+                obj.Transparency = 1
+            else
+                obj.Transparency = SERVERPOS_CLONE_TRANSPARENCY
+            end
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = SERVERPOS_CLONE_TRANSPARENCY
+        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+            obj.Enabled = false
+        elseif obj:IsA("Animator") or obj:IsA("AnimationController") or obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+            obj:Destroy()
+        end
+    end
+    local fakeHumanoid = serverPosClone:FindFirstChildOfClass("Humanoid")
+    if fakeHumanoid then
+        fakeHumanoid:Destroy()
+    end
+    serverPosClone.Parent = workspace
+    serverPosClone:PivotTo(serverPosChar:GetPivot())
+    return true
+end
+
+local function getServerPosPing()
+    local success, ping = pcall(function()
+        return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+    end)
+    if success and typeof(ping) == "number" then
+        return math.clamp(ping, 10, 1000)
+    end
+    return 10
+end
+
+local function addServerPosHistory(position)
+    table.insert(serverPosHistory, {position = position, time = tick()})
+    local maxHistory = math.ceil(2 / 0.05) + 10
+    while #serverPosHistory > maxHistory do
+        table.remove(serverPosHistory, 1)
+    end
+end
+
+local function getServerPosAtTime(targetTime)
+    if #serverPosHistory == 0 then
+        return serverPosRoot and serverPosRoot.Position or Vector3.zero
+    end
+    local closest = serverPosHistory[1]
+    local closestDiff = math.abs(closest.time - targetTime)
+    for i = 2, #serverPosHistory do
+        local entry = serverPosHistory[i]
+        local diff = math.abs(entry.time - targetTime)
+        if diff < closestDiff then
+            closest = entry
+            closestDiff = diff
+        end
+    end
+    return closest.position
+end
+
+local function updateServerPosClone()
+    if not serverPosEnabled then return end
+    if not serverPosChar or not serverPosChar.Parent then return end
+    if not serverPosRoot or not serverPosRoot.Parent then return end
+    if serverPosHumanoid and serverPosHumanoid.Health <= 0 then
+        destroyServerPosClone()
+        return
+    end
+    if not serverPosClone or not serverPosClone.Parent then
+        if not createServerPosClone() then
+            return
+        end
+    end
+    addServerPosHistory(serverPosRoot.Position)
+    local pingDelay = getServerPosPing() / 1000
+    local estimatedServerTime = tick() - pingDelay
+    local estimatedPosition = getServerPosAtTime(estimatedServerTime)
+    local currentCFrame = serverPosRoot.CFrame
+    local rotation = currentCFrame - currentCFrame.Position
+    serverPosClone:PivotTo(CFrame.new(estimatedPosition) * rotation)
+end
+
+local function setupServerPos(character)
+    destroyServerPosClone()
+    serverPosChar = character
+    serverPosRoot = character:WaitForChild("HumanoidRootPart")
+    serverPosHumanoid = character:WaitForChild("Humanoid")
+    serverPosHistory = {}
+    if not createServerPosClone() then
+        return
+    end
+    serverPosHealthConn = serverPosHumanoid.HealthChanged:Connect(function(health)
+        if health <= 0 then
+            destroyServerPosClone()
+        end
+    end)
+    serverPosConn = RunService.Heartbeat:Connect(updateServerPosClone)
+end
+
+local function enableServerPos()
+    serverPosEnabled = true
+    if not serverPosCharAddedConn then
+        serverPosCharAddedConn = LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+            task.wait()
+            if serverPosEnabled then
+                setupServerPos(newCharacter)
+            end
+        end)
+    end
+    if LocalPlayer.Character then
+        setupServerPos(LocalPlayer.Character)
+    end
+end
+
+local function disableServerPos()
+    serverPosEnabled = false
+    if serverPosCharAddedConn then
+        serverPosCharAddedConn:Disconnect()
+        serverPosCharAddedConn = nil
+    end
+    destroyServerPosClone()
+end
+
+serverPosSection:AddToggle("Show Server Pos", function(bool)
+    if bool then
+        enableServerPos()
+    else
+        disableServerPos()
+    end
+end)
+
 RootNicolas:GiveTask(function()
     ogFeatures.blockAnims = false
     ogFeatures.equipSound = false
@@ -606,4 +785,5 @@ RootNicolas:GiveTask(function()
     waterFeatures.waterImmunity = false
     disableWaterImmunity()
     disableAntiStealer()
+    disableServerPos()
 end)
