@@ -588,177 +588,105 @@ messageSection:AddButton("Send Message", function()
     game:GetService("Chat"):Chat(character, messageText, Enum.ChatColor.White)
 end)
 
-local serverPosSection = myTab:AddSection("Estimated Server Pos", "shows your server pos")
-serverPosSection:AddParagraph("Additional Info", "creates a clone of your character and estimates your delay so you can visually see it\n\nCredits: @drowsynicolas")
+local serverPosSection = myTab:AddSection("Server Pos", "shows your server pos")
+serverPosSection:AddParagraph("Additional Info", "creates a marker where the server thinks you are based on your ping\n\nCredits: @drowsynicolas")
 
 local serverPosEnabled = false
-local serverPosClone = nil
-local serverPosConn = nil
-local serverPosHealthConn = nil
-local serverPosCharAddedConn = nil
-local serverPosChar = LocalPlayer.Character
+local serverPosMarker = nil
 local serverPosRoot = nil
 local serverPosHumanoid = nil
+local serverPosConnection = nil
+local serverPosHealthConnection = nil
+local serverPosCharAddedConn = nil
 local serverPosHistory = {}
-local SERVERPOS_CLONE_TRANSPARENCY = 0.5
+local serverPosColor = Color3.new(1, 1, 1)
 
-local function destroyServerPosClone()
-    if serverPosConn then
-        serverPosConn:Disconnect()
-        serverPosConn = nil
+local function destroyServerPosMarker()
+    if serverPosConnection then
+        serverPosConnection:Disconnect()
+        serverPosConnection = nil
     end
-    if serverPosHealthConn then
-        serverPosHealthConn:Disconnect()
-        serverPosHealthConn = nil
+    if serverPosHealthConnection then
+        serverPosHealthConnection:Disconnect()
+        serverPosHealthConnection = nil
     end
-    if serverPosClone then
-        serverPosClone:Destroy()
-        serverPosClone = nil
+    if serverPosMarker then
+        serverPosMarker:Destroy()
+        serverPosMarker = nil
     end
     serverPosHistory = {}
-end
-
-local function createServerPosClone()
-    if serverPosClone then
-        serverPosClone:Destroy()
-    end
-    if not serverPosChar or not serverPosChar.Parent then
-        return false
-    end
-    serverPosChar.Archivable = true
-    for _, obj in ipairs(serverPosChar:GetDescendants()) do
-        obj.Archivable = true
-    end
-    serverPosClone = serverPosChar:Clone()
-    if not serverPosClone then
-        return false
-    end
-    serverPosClone.Name = "ServerPosClone"
-    for _, obj in ipairs(serverPosClone:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            obj.Anchored = true
-            obj.CanCollide = false
-            obj.CanTouch = false
-            obj.CanQuery = false
-            obj.CastShadow = false
-            obj.Massless = true
-            if obj.Name == "HumanoidRootPart" then
-                obj.Transparency = 1
-            else
-                obj.Transparency = SERVERPOS_CLONE_TRANSPARENCY
-            end
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then
-            obj.Transparency = SERVERPOS_CLONE_TRANSPARENCY
-        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-            obj.Enabled = false
-        elseif obj:IsA("Animator") or obj:IsA("AnimationController") or obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-            obj:Destroy()
-        end
-    end
-    local fakeHumanoid = serverPosClone:FindFirstChildOfClass("Humanoid")
-    if fakeHumanoid then
-        fakeHumanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-        fakeHumanoid.AutoRotate = false
-        fakeHumanoid.PlatformStand = true
-        fakeHumanoid.EvaluateStateMachine = false
-        fakeHumanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-        fakeHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
-        for _, state in ipairs(Enum.HumanoidStateType:GetEnumItems()) do
-            fakeHumanoid:SetStateEnabled(state, false)
-        end
-        fakeHumanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
-    end
-    serverPosClone.Parent = workspace
-    serverPosClone:PivotTo(serverPosChar:GetPivot())
-    return true
 end
 
 local function getServerPosPing()
-    local success, ping = pcall(function()
+    local success, value = pcall(function()
         return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
     end)
-    if success and typeof(ping) == "number" then
-        return math.clamp(ping, 10, 1000)
-    end
-    return 10
+    return success and math.clamp(value, 10, 1000) or 10
 end
 
-local function addServerPosHistory(position)
-    table.insert(serverPosHistory, {position = position, time = tick()})
-    local maxHistory = math.ceil(2 / 0.05) + 10
-    while #serverPosHistory > maxHistory do
-        table.remove(serverPosHistory, 1)
-    end
-end
+local function createServerPosMarker(character)
+    destroyServerPosMarker()
 
-local function getServerPosAtTime(targetTime)
-    if #serverPosHistory == 0 then
-        return serverPosRoot and serverPosRoot.Position or Vector3.zero
-    end
-    local closest = serverPosHistory[1]
-    local closestDiff = math.abs(closest.time - targetTime)
-    for i = 2, #serverPosHistory do
-        local entry = serverPosHistory[i]
-        local diff = math.abs(entry.time - targetTime)
-        if diff < closestDiff then
-            closest = entry
-            closestDiff = diff
-        end
-    end
-    return closest.position
-end
-
-local function updateServerPosClone()
-    if not serverPosEnabled then return end
-    if not serverPosChar or not serverPosChar.Parent then return end
-    if not serverPosRoot or not serverPosRoot.Parent then return end
-    if serverPosHumanoid and serverPosHumanoid.Health <= 0 then
-        destroyServerPosClone()
-        return
-    end
-    if not serverPosClone or not serverPosClone.Parent then
-        if not createServerPosClone() then
-            return
-        end
-    end
-    addServerPosHistory(serverPosRoot.Position)
-    local pingDelay = getServerPosPing() / 1000
-    local estimatedServerTime = tick() - pingDelay
-    local estimatedPosition = getServerPosAtTime(estimatedServerTime)
-    local currentCFrame = serverPosRoot.CFrame
-    local rotation = currentCFrame - currentCFrame.Position
-    serverPosClone:PivotTo(CFrame.new(estimatedPosition) * rotation)
-end
-
-local function setupServerPos(character)
-    destroyServerPosClone()
-    serverPosChar = character
     serverPosRoot = character:WaitForChild("HumanoidRootPart")
     serverPosHumanoid = character:WaitForChild("Humanoid")
-    serverPosHistory = {}
-    if not createServerPosClone() then
-        return
-    end
-    serverPosHealthConn = serverPosHumanoid.HealthChanged:Connect(function(health)
+
+    serverPosMarker = Instance.new("Part")
+    serverPosMarker.Name = "ServerPosition"
+    serverPosMarker.Size = Vector3.new(2, 2, 1)
+    serverPosMarker.Color = serverPosColor
+    serverPosMarker.Material = Enum.Material.ForceField
+    serverPosMarker.Anchored = true
+    serverPosMarker.CanCollide = false
+    serverPosMarker.CanTouch = false
+    serverPosMarker.CanQuery = false
+    serverPosMarker.CastShadow = false
+    serverPosMarker.Parent = workspace
+
+    serverPosHealthConnection = serverPosHumanoid.HealthChanged:Connect(function(health)
         if health <= 0 then
-            destroyServerPosClone()
+            destroyServerPosMarker()
         end
     end)
-    serverPosConn = RunService.Heartbeat:Connect(updateServerPosClone)
+
+    serverPosConnection = RunService.Heartbeat:Connect(function()
+        if not serverPosMarker or not serverPosMarker.Parent then return end
+        if not serverPosRoot or not serverPosRoot.Parent then return end
+
+        table.insert(serverPosHistory, {
+            position = serverPosRoot.Position,
+            rotation = serverPosRoot.CFrame - serverPosRoot.Position,
+            time = tick()
+        })
+
+        while #serverPosHistory > 120 do
+            table.remove(serverPosHistory, 1)
+        end
+
+        local target = tick() - getServerPosPing() / 1000
+        local closest = serverPosHistory[1]
+
+        for _, entry in ipairs(serverPosHistory) do
+            if math.abs(entry.time - target) < math.abs(closest.time - target) then
+                closest = entry
+            end
+        end
+
+        serverPosMarker.CFrame = CFrame.new(closest.position) * closest.rotation
+    end)
 end
 
 local function enableServerPos()
     serverPosEnabled = true
     if not serverPosCharAddedConn then
-        serverPosCharAddedConn = LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+        serverPosCharAddedConn = LocalPlayer.CharacterAdded:Connect(function(character)
             task.wait()
             if serverPosEnabled then
-                setupServerPos(newCharacter)
+                createServerPosMarker(character)
             end
         end)
     end
     if LocalPlayer.Character then
-        setupServerPos(LocalPlayer.Character)
+        createServerPosMarker(LocalPlayer.Character)
     end
 end
 
@@ -768,7 +696,7 @@ local function disableServerPos()
         serverPosCharAddedConn:Disconnect()
         serverPosCharAddedConn = nil
     end
-    destroyServerPosClone()
+    destroyServerPosMarker()
 end
 
 serverPosSection:AddToggle("Show Server Pos", function(bool)
@@ -776,6 +704,12 @@ serverPosSection:AddToggle("Show Server Pos", function(bool)
         enableServerPos()
     else
         disableServerPos()
+    end
+end)
+serverPosSection:AddColorPicker("Marker Color", Color3.new(1, 1, 1), function(color)
+    serverPosColor = color
+    if serverPosMarker then
+        serverPosMarker.Color = color
     end
 end)
 
