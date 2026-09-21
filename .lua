@@ -634,7 +634,7 @@ local function createServerPosMarker(character)
     serverPosMarker.Name = "ServerPosition"
     serverPosMarker.Size = Vector3.new(2, 2, 1)
     serverPosMarker.Color = serverPosColor
-    serverPosMarker.Material = Enum.Material.ForceField
+    serverPosMarker.Material = Enum.Material.Glass
     serverPosMarker.Anchored = true
     serverPosMarker.CanCollide = false
     serverPosMarker.CanTouch = false
