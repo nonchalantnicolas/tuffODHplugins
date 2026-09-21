@@ -588,7 +588,7 @@ messageSection:AddButton("Send Message", function()
     game:GetService("Chat"):Chat(character, messageText, Enum.ChatColor.White)
 end)
 
-local serverPosSection = myTab:AddSection("Server Pos", "shows your server pos")
+local serverPosSection = myTab:AddSection("Estimated Server Pos", "shows your server pos")
 serverPosSection:AddParagraph("Additional Info", "creates a marker where the server thinks you are based on your ping\n\nCredits: @drowsynicolas")
 
 local serverPosEnabled = false
@@ -706,7 +706,8 @@ serverPosSection:AddToggle("Show Server Pos", function(bool)
         disableServerPos()
     end
 end)
-serverPosSection:AddColorPicker("Marker Color", Color3.new(1, 1, 1), function(color)
+
+serverPosSection:AddColorpicker("Marker Color", Color3.fromRGB(255, 255, 255), function(color)
     serverPosColor = color
     if serverPosMarker then
         serverPosMarker.Color = color
