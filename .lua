@@ -631,16 +631,17 @@ local function createServerPosMarker(character)
     serverPosHumanoid = character:WaitForChild("Humanoid")
 
     serverPosMarker = Instance.new("Part")
-    serverPosMarker.Name = "ServerPosition"
-    serverPosMarker.Size = Vector3.new(2, 2, 1)
-    serverPosMarker.Color = serverPosColor
-    serverPosMarker.Material = Enum.Material.Glass
-    serverPosMarker.Anchored = true
-    serverPosMarker.CanCollide = false
-    serverPosMarker.CanTouch = false
-    serverPosMarker.CanQuery = false
-    serverPosMarker.CastShadow = false
-    serverPosMarker.Parent = workspace
+serverPosMarker.Name = "ServerPosition"
+serverPosMarker.Size = Vector3.new(2, 2, 1)
+serverPosMarker.Color = serverPosColor
+serverPosMarker.Material = Enum.Material.Glass
+serverPosMarker.Transparency = 0.5
+serverPosMarker.Anchored = true
+serverPosMarker.CanCollide = false
+serverPosMarker.CanTouch = false
+serverPosMarker.CanQuery = false
+serverPosMarker.CastShadow = false
+serverPosMarker.Parent = workspace
 
     serverPosHealthConnection = serverPosHumanoid.HealthChanged:Connect(function(health)
         if health <= 0 then
