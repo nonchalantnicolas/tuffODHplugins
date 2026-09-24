@@ -279,9 +279,17 @@ local function shiftLockKeybind()
 end
 
 local function activatePerk()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
+    local character = LocalPlayer.Character
     if not character then return end
+    local trap = character:FindFirstChild("Trap")
+    if trap then
+        local activate = trap:FindFirstChild("Activate")
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        if activate and hrp then
+            activate:FireServer(hrp.CFrame)
+            return
+        end
+    end
     for _, perk in ipairs(character:GetChildren()) do
         local activate = perk:FindFirstChild("Activate")
         if activate then
@@ -532,7 +540,7 @@ waterSection:AddToggle("Water Immunity", function(bool)
     end
 end)
 
-local antiStealerMaid = nil
+local antiTradeMaid = nil
 
 local function destroyTrade()
     local trade = ReplicatedStorage:FindFirstChild("Trade")
@@ -541,37 +549,37 @@ local function destroyTrade()
     end
 end
 
-local function enableAntiStealer()
-    if antiStealerMaid then
-        antiStealerMaid:DoCleaning()
-        antiStealerMaid = nil
+local function enableAntiTrade()
+    if antiTradeMaid then
+        antiTradeMaid:DoCleaning()
+        antiTradeMaid = nil
     end
-    antiStealerMaid = nicolas.new()
+    antiTradeMaid = nicolas.new()
     destroyTrade()
-    antiStealerMaid:GiveTask(ReplicatedStorage.ChildAdded:Connect(function(child)
+    antiTradeMaid:GiveTask(ReplicatedStorage.ChildAdded:Connect(function(child)
         if child.Name == "Trade" then
             child:Destroy()
         end
     end))
-    antiStealerMaid:GiveTask(RunService.Heartbeat:Connect(function()
+    antiTradeMaid:GiveTask(RunService.Heartbeat:Connect(function()
         destroyTrade()
     end))
 end
 
-local function disableAntiStealer()
-    if antiStealerMaid then
-        antiStealerMaid:DoCleaning()
-        antiStealerMaid = nil
+local function disableAntiTrade()
+    if antiTradeMaid then
+        antiTradeMaid:DoCleaning()
+        antiTradeMaid = nil
     end
 end
 
-local antiSection = myTab:AddSection("Disable Trade", "fucks the trade system")
-antiSection:AddParagraph("Additional Info", "Destroys the system trade relies on\n\nCredits: @drowsynicolas")
-antiSection:AddToggle("Disable Trade", function(bool)
+local tradeSection = myTab:AddSection("Disable Trade", "fucks the trade system")
+tradeSection:AddParagraph("Additional Info", "Destroys the system trade relies on\n\nCredits: @drowsynicolas")
+tradeSection:AddToggle("Disable Trade", function(bool)
     if bool then
-        enableAntiStealer()
+        enableAntiTrade()
     else
-        disableAntiStealer()
+        disableAntiTrade()
     end
 end)
 
@@ -732,6 +740,6 @@ RootNicolas:GiveTask(function()
     disableSpectateUI()
     waterFeatures.waterImmunity = false
     disableWaterImmunity()
-    disableAntiStealer()
+    disableAntiTrade()
     disableServerPos()
 end)
