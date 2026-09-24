@@ -723,7 +723,7 @@ serverPosSection:AddColorpicker("Marker Color", Color3.fromRGB(255, 255, 255), f
     end
 end)
 
-local autoPerkSection = myTab:AddSection("Auto Perk (WIP)", "this plugin is a work in progress and may not work")
+local autoPerkSection = myTab:AddSection("Auto Perk (WIP)", "This plugin is a work in progress and may not work.")
 autoPerkSection:AddParagraph("Additional Info", "the UI for the equipped perk doesn't change with this but this plugin works\n\nCredits: @drowsynicolas")
 
 local autoPerkEnabled = false
