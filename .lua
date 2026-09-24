@@ -723,6 +723,148 @@ serverPosSection:AddColorpicker("Marker Color", Color3.fromRGB(255, 255, 255), f
     end
 end)
 
+local autoPerkSection = myTab:AddSection("Auto Perk", "automatically equips perks")
+autoPerkSection:AddParagraph("Additional Info", "the UI for the equipped perk doesn't change with this but this plugin works\n\nCredits: @drowsynicolas")
+
+local autoPerkEnabled = false
+local autoPerkRoundConn = nil
+local autoPerkMapConn = nil
+
+local PERK_LIST = {
+    "Footsteps",
+    "None",
+    "Xray",
+    "Trap",
+    "Sprint",
+    "Sleight",
+    "Ninja",
+    "Haste",
+    "Ghost",
+    "FakeGun",
+    "Decoy",
+}
+
+local MAP_LIST = {
+    {name = "House 2", keyword = "House2"},
+    {name = "Factory", keyword = "Factory"},
+    {name = "Hospital 3", keyword = "Hospital3"},
+    {name = "Milbase", keyword = "Milbase"},
+    {name = "Workplace", keyword = "Workplace"},
+    {name = "Mansion 2", keyword = "Mansion2"},
+    {name = "Research Facility", keyword = "ResearchFacility"},
+    {name = "Police Station", keyword = "PoliceStation"},
+    {name = "Bio Lab", keyword = "BioLab"},
+    {name = "Bank 2", keyword = "Bank2"},
+    {name = "Hotel", keyword = "Hotel"},
+}
+
+local autoPerkChoices = {}
+
+local function getPerkEquipRemote()
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if not remotes then return nil end
+    local inventory = remotes:FindFirstChild("Inventory")
+    if not inventory then return nil end
+    return inventory:FindFirstChild("Equip")
+end
+
+local function equipPerk(perkName)
+    if not perkName or perkName == "None" then return end
+    if LocalPlayer:GetAttribute("EquippedPerk") == perkName then return end
+    local remote = getPerkEquipRemote()
+    if remote then
+        remote:FireServer(perkName, "Perks")
+    end
+end
+
+local function getCurrentMap()
+    local keywords = {}
+    for _, entry in ipairs(MAP_LIST) do
+        table.insert(keywords, entry.keyword)
+    end
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child:IsA("Model") or child:IsA("Folder") then
+            local name = child.Name
+            for _, keyword in ipairs(keywords) do
+                if name:lower():find(keyword:lower(), 1, true) then
+                    return keyword
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function tryAutoEquip()
+    if not autoPerkEnabled then return end
+    local mapKeyword = getCurrentMap()
+    if not mapKeyword then return end
+    local perk = autoPerkChoices[mapKeyword]
+    if not perk or perk == "None" then return end
+    equipPerk(perk)
+end
+
+local function startAutoPerk()
+    if autoPerkRoundConn then
+        autoPerkRoundConn:Disconnect()
+        autoPerkRoundConn = nil
+    end
+    if autoPerkMapConn then
+        autoPerkMapConn:Disconnect()
+        autoPerkMapConn = nil
+    end
+
+    autoPerkRoundConn = LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        tryAutoEquip()
+    end)
+
+    autoPerkMapConn = workspace.ChildAdded:Connect(function(child)
+        if child:IsA("Model") or child:IsA("Folder") then
+            task.wait(0.5)
+            tryAutoEquip()
+        end
+    end)
+
+    tryAutoEquip()
+end
+
+local function stopAutoPerk()
+    if autoPerkRoundConn then
+        autoPerkRoundConn:Disconnect()
+        autoPerkRoundConn = nil
+    end
+    if autoPerkMapConn then
+        autoPerkMapConn:Disconnect()
+        autoPerkMapConn = nil
+    end
+end
+
+autoPerkSection:AddToggle("Auto Perk", function(bool)
+    autoPerkEnabled = bool
+    if bool then
+        startAutoPerk()
+    else
+        stopAutoPerk()
+    end
+end)
+
+local function makeMapDropdown(mapEntry)
+    local dropdown = autoPerkSection:AddDropdown(mapEntry.name, PERK_LIST, function(selected)
+        autoPerkChoices[mapEntry.keyword] = selected
+        if autoPerkEnabled then
+            tryAutoEquip()
+        end
+    end)
+    dropdown:Select("Footsteps")
+    autoPerkChoices[mapEntry.keyword] = "Footsteps"
+    return dropdown
+end
+
+for _, mapEntry in ipairs(MAP_LIST) do
+    makeMapDropdown(mapEntry)
+end
+
 RootNicolas:GiveTask(function()
     ogFeatures.blockAnims = false
     ogFeatures.equipSound = false
@@ -742,4 +884,5 @@ RootNicolas:GiveTask(function()
     disableWaterImmunity()
     disableAntiTrade()
     disableServerPos()
+    stopAutoPerk()
 end)
