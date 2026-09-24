@@ -730,9 +730,8 @@ local autoPerkEnabled = false
 local autoPerkRoundConn = nil
 local autoPerkMapConn = nil
 
-local PERK_LIST = {
+local VALID_PERKS = {
     "Footsteps",
-    "None",
     "Xray",
     "Trap",
     "Sprint",
@@ -760,6 +759,17 @@ local MAP_LIST = {
 
 local autoPerkChoices = {}
 
+local function normalizePerk(text)
+    if not text or text == "" then return nil end
+    local cleaned = text:gsub("%s+", ""):lower()
+    for _, perk in ipairs(VALID_PERKS) do
+        if perk:lower() == cleaned then
+            return perk
+        end
+    end
+    return nil
+end
+
 local function getPerkEquipRemote()
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if not remotes then return nil end
@@ -769,7 +779,7 @@ local function getPerkEquipRemote()
 end
 
 local function equipPerk(perkName)
-    if not perkName or perkName == "None" then return end
+    if not perkName then return end
     if LocalPlayer:GetAttribute("EquippedPerk") == perkName then return end
     local remote = getPerkEquipRemote()
     if remote then
@@ -800,7 +810,7 @@ local function tryAutoEquip()
     local mapKeyword = getCurrentMap()
     if not mapKeyword then return end
     local perk = autoPerkChoices[mapKeyword]
-    if not perk or perk == "None" then return end
+    if not perk then return end
     equipPerk(perk)
 end
 
@@ -849,20 +859,26 @@ autoPerkSection:AddToggle("Auto Perk", function(bool)
     end
 end)
 
-local function makeMapDropdown(mapEntry)
-    local dropdown = autoPerkSection:AddDropdown(mapEntry.name, PERK_LIST, function(selected)
-        autoPerkChoices[mapEntry.keyword] = selected
-        if autoPerkEnabled then
-            tryAutoEquip()
-        end
-    end)
-    dropdown:Select("Footsteps")
-    autoPerkChoices[mapEntry.keyword] = "Footsteps"
-    return dropdown
-end
+autoPerkSection:AddParagraph("Valid Perks", "Type the perk name for each map. Valid inputs:\nFootsteps, Xray, Trap, Sprint, Sleight, Ninja, Haste, Ghost, FakeGun, Decoy")
 
 for _, mapEntry in ipairs(MAP_LIST) do
-    makeMapDropdown(mapEntry)
+    autoPerkSection:AddTextBox(mapEntry.name, function(text)
+        if text == "" then return end
+        local perk = normalizePerk(text)
+        if perk then
+            autoPerkChoices[mapEntry.keyword] = perk
+            shared.Notify("Auto Perk: \"" .. perk .. "\" selected for " .. mapEntry.name, 5)
+            if autoPerkEnabled then
+                tryAutoEquip()
+            end
+        else
+            autoPerkChoices[mapEntry.keyword] = "Footsteps"
+            shared.Notify("Auto Perk: invalid input, fallback to Footsteps", 5)
+            if autoPerkEnabled then
+                tryAutoEquip()
+            end
+        end
+    end)
 end
 
 RootNicolas:GiveTask(function()
