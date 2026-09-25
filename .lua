@@ -1,3 +1,11 @@
+-- Gun Features
+-- Controller+
+-- Water Proof
+-- Disable Trade
+-- Client Sided Message
+-- Estimated Server Pos
+-- Auto Perk
+
 local table_insert = table.insert
 local nicolas = {}
 nicolas.__index = nicolas
