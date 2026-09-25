@@ -723,11 +723,10 @@ serverPosSection:AddColorpicker("Marker Color", Color3.fromRGB(255, 255, 255), f
     end
 end)
 
-local autoPerkSection = myTab:AddSection("Auto Perk (WIP)", "This plugin is a work in progress and may not work.")
-autoPerkSection:AddParagraph("Additional Info", "the UI for the equipped perk doesn't change with this but this plugin works\n\nCredits: @drowsynicolas")
+local autoPerkSection = myTab:AddSection("Auto Perk", "automatically equips perks")
+autoPerkSection:AddParagraph("Additional Info", "equips the perk you picked for the current map when the map loads\n\nthe UI for the equipped perk doesn't change with this but this plugin works\n\nCredits: @drowsynicolas")
 
 local autoPerkEnabled = false
-local autoPerkRoundConn = nil
 local autoPerkMapConn = nil
 
 local VALID_PERKS = {
@@ -746,15 +745,16 @@ local VALID_PERKS = {
 local MAP_LIST = {
     {name = "House 2", keyword = "House2"},
     {name = "Factory", keyword = "Factory"},
-    {name = "Hospital 3", keyword = "Hospital3"},
-    {name = "Milbase", keyword = "Milbase"},
+    {name = "Milbase", keyword = "MilBase"},
     {name = "Workplace", keyword = "Workplace"},
     {name = "Mansion 2", keyword = "Mansion2"},
     {name = "Research Facility", keyword = "ResearchFacility"},
     {name = "Police Station", keyword = "PoliceStation"},
     {name = "Bio Lab", keyword = "BioLab"},
     {name = "Bank 2", keyword = "Bank2"},
-    {name = "Hotel", keyword = "Hotel"},
+    {name = "Office 2014", keyword = "Office2014"},
+    {name = "Hospital 2014", keyword = "Hospital2014"},
+    {name = "Hotel 2014", keyword = "Hotel2014"},
 }
 
 local autoPerkChoices = {}
@@ -788,21 +788,25 @@ local function equipPerk(perkName)
 end
 
 local function getCurrentMap()
-    local keywords = {}
-    for _, entry in ipairs(MAP_LIST) do
-        table.insert(keywords, entry.keyword)
-    end
     for _, child in ipairs(workspace:GetChildren()) do
         if child:IsA("Model") or child:IsA("Folder") then
-            local name = child.Name
-            for _, keyword in ipairs(keywords) do
-                if name:lower():find(keyword:lower(), 1, true) then
-                    return keyword
+            for _, entry in ipairs(MAP_LIST) do
+                if child.Name == entry.keyword then
+                    return entry.keyword
                 end
             end
         end
     end
     return nil
+end
+
+local function isMapName(name)
+    for _, entry in ipairs(MAP_LIST) do
+        if entry.keyword == name then
+            return true
+        end
+    end
+    return false
 end
 
 local function tryAutoEquip()
@@ -815,35 +819,24 @@ local function tryAutoEquip()
 end
 
 local function startAutoPerk()
-    if autoPerkRoundConn then
-        autoPerkRoundConn:Disconnect()
-        autoPerkRoundConn = nil
-    end
     if autoPerkMapConn then
         autoPerkMapConn:Disconnect()
         autoPerkMapConn = nil
     end
 
-    autoPerkRoundConn = LocalPlayer.CharacterAdded:Connect(function()
+    autoPerkMapConn = workspace.ChildAdded:Connect(function(child)
+        if not child:IsA("Model") and not child:IsA("Folder") then return end
+        if not isMapName(child.Name) then return end
         task.wait(0.5)
         tryAutoEquip()
     end)
 
-    autoPerkMapConn = workspace.ChildAdded:Connect(function(child)
-        if child:IsA("Model") or child:IsA("Folder") then
-            task.wait(0.5)
-            tryAutoEquip()
-        end
+    task.spawn(function()
+        tryAutoEquip()
     end)
-
-    tryAutoEquip()
 end
 
 local function stopAutoPerk()
-    if autoPerkRoundConn then
-        autoPerkRoundConn:Disconnect()
-        autoPerkRoundConn = nil
-    end
     if autoPerkMapConn then
         autoPerkMapConn:Disconnect()
         autoPerkMapConn = nil
@@ -859,7 +852,7 @@ autoPerkSection:AddToggle("Auto Perk", function(bool)
     end
 end)
 
-autoPerkSection:AddParagraph("Valid Perks", "Type the perk name for each map. Valid inputs:\nFootsteps, Xray, Trap, Sprint, Sleight, Ninja, Haste, Ghost, FakeGun, Decoy")
+autoPerkSection:AddParagraph("Valid Perks", "Type the perk name for each map. Valid inputs: Footsteps, Xray, Trap, Sprint, Sleight, Ninja, Haste, Ghost, FakeGun, Decoy")
 
 for _, mapEntry in ipairs(MAP_LIST) do
     autoPerkSection:AddTextBox(mapEntry.name, function(text)
