@@ -62,12 +62,25 @@ local BLOCKED = {
 local SOUND_ID = "rbxassetid://7158356564"
 local START_OFFSET = 0.3
 
-local ogFeatures = {
+local gunFeatures = {
     blockAnims = false,
     equipSound = false,
+    forceField = false,
+    fireColor = false,
 }
 local charData = {}
 local currentSounds = {}
+
+local forceFieldConnection = nil
+local forceFieldColor = Color3.fromRGB(0, 100, 255)
+local forceFieldSize = 3.5
+local forceFieldTransparency = 0.3
+local FORCE_FIELD_NAME = "\u{200B}\u{200B}\u{200B}"
+
+local fireColorConnection = nil
+local customFireColor = Color3.fromRGB(0, 100, 255)
+local DEFAULT_FIRE_COLOR = Color3.fromRGB(1, 76, 0)
+local DEFAULT_FIRE_SECONDARY = Color3.fromRGB(0, 0, 0)
 
 local function cleanCharacter(character)
     local data = charData[character]
@@ -117,13 +130,13 @@ end
 local function hookTool(tool, character, nicolasObj)
     if tool.Name ~= "Gun" then return end
     local equipConn = tool.Equipped:Connect(function()
-        if ogFeatures.equipSound then
+        if gunFeatures.equipSound then
             playSound(character, SOUND_ID)
         end
     end)
     nicolasObj:GiveTask(equipConn)
     local unequipConn = tool.Unequipped:Connect(function()
-        if ogFeatures.equipSound then
+        if gunFeatures.equipSound then
             playSound(character, SOUND_ID)
         end
     end)
@@ -131,7 +144,7 @@ local function hookTool(tool, character, nicolasObj)
     return equipConn, unequipConn
 end
 
-local function applyOGFeatures(character)
+local function applyGunFeatures(character)
     local data = charData[character]
     if not data then
         data = {
@@ -147,7 +160,7 @@ local function applyOGFeatures(character)
     end
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid then return end
-    if ogFeatures.blockAnims then
+    if gunFeatures.blockAnims then
         data.animNicolas:GiveTask(RunService.RenderStepped:Connect(function()
             for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
                 local anim = track.Animation
@@ -160,7 +173,7 @@ local function applyOGFeatures(character)
             end
         end))
     end
-    if ogFeatures.equipSound then
+    if gunFeatures.equipSound then
         for _, child in ipairs(character:GetChildren()) do
             if child:IsA("Tool") then
                 hookTool(child, character, data.equipNicolas)
@@ -176,8 +189,8 @@ end
 
 local function onCharacterAdded(character)
     character:WaitForChild("Humanoid")
-    if ogFeatures.blockAnims or ogFeatures.equipSound then
-        applyOGFeatures(character)
+    if gunFeatures.blockAnims or gunFeatures.equipSound then
+        applyGunFeatures(character)
     end
 end
 
@@ -188,7 +201,7 @@ local function enableBlockAnims()
     animBlockGlobalNicolas:DoCleaning()
     animBlockGlobalNicolas = nicolas.new()
     if LocalPlayer.Character then
-        applyOGFeatures(LocalPlayer.Character)
+        applyGunFeatures(LocalPlayer.Character)
     end
     animBlockGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
         onCharacterAdded(character)
@@ -209,7 +222,7 @@ local function enableEquipSound()
     equipSoundGlobalNicolas:DoCleaning()
     equipSoundGlobalNicolas = nicolas.new()
     if LocalPlayer.Character then
-        applyOGFeatures(LocalPlayer.Character)
+        applyGunFeatures(LocalPlayer.Character)
     end
     equipSoundGlobalNicolas:GiveTask(LocalPlayer.CharacterAdded:Connect(function(character)
         onCharacterAdded(character)
@@ -231,26 +244,175 @@ local function disableEquipSound()
     end
 end
 
+local function applyForceField(gunDrop)
+    if not gunDrop or gunDrop.Name ~= "GunDrop" then return end
+    if gunDrop:FindFirstChild(FORCE_FIELD_NAME) then return end
+
+    local sphere = Instance.new("Part")
+    sphere.Name = FORCE_FIELD_NAME
+    sphere.Shape = Enum.PartType.Ball
+    sphere.Size = Vector3.new(forceFieldSize, forceFieldSize, forceFieldSize)
+    sphere.Color = forceFieldColor
+    sphere.Material = Enum.Material.ForceField
+    sphere.Transparency = forceFieldTransparency
+    sphere.Anchored = true
+    sphere.CanCollide = false
+    sphere.CanTouch = false
+    sphere.CanQuery = false
+    sphere.CastShadow = false
+    sphere.Massless = true
+    sphere.CFrame = gunDrop.CFrame
+    sphere.Parent = gunDrop
+end
+
+local function enableForceField()
+    if forceFieldConnection then
+        forceFieldConnection:Disconnect()
+        forceFieldConnection = nil
+    end
+
+    forceFieldConnection = workspace.DescendantAdded:Connect(function(obj)
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            task.wait()
+            applyForceField(obj)
+        end
+    end)
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            applyForceField(obj)
+        end
+    end
+end
+
+local function disableForceField()
+    if forceFieldConnection then
+        forceFieldConnection:Disconnect()
+        forceFieldConnection = nil
+    end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            local sphere = obj:FindFirstChild(FORCE_FIELD_NAME)
+            if sphere then
+                sphere:Destroy()
+            end
+        end
+    end
+end
+
+local function applyFireColor(gunDrop)
+    if not gunDrop or gunDrop.Name ~= "GunDrop" then return end
+    local fire = gunDrop:FindFirstChild("Fire")
+    if fire and fire:IsA("Fire") then
+        fire.Color = customFireColor
+        fire.SecondaryColor = customFireColor
+    end
+end
+
+local function resetFireColor(gunDrop)
+    if not gunDrop or gunDrop.Name ~= "GunDrop" then return end
+    local fire = gunDrop:FindFirstChild("Fire")
+    if fire and fire:IsA("Fire") then
+        fire.Color = DEFAULT_FIRE_COLOR
+        fire.SecondaryColor = DEFAULT_FIRE_SECONDARY
+    end
+end
+
+local function enableFireColor()
+    if fireColorConnection then
+        fireColorConnection:Disconnect()
+        fireColorConnection = nil
+    end
+
+    fireColorConnection = workspace.DescendantAdded:Connect(function(obj)
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            task.wait()
+            applyFireColor(obj)
+        end
+    end)
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            applyFireColor(obj)
+        end
+    end
+end
+
+local function disableFireColor()
+    if fireColorConnection then
+        fireColorConnection:Disconnect()
+        fireColorConnection = nil
+    end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            resetFireColor(obj)
+        end
+    end
+end
+
 if LocalPlayer.Character then
     onCharacterAdded(LocalPlayer.Character)
 end
 
-local ogSection = myTab:AddSection("OG Gun", "Gun Features")
-ogSection:AddParagraph("Additional Info", "This plugin works for both MM2 and MMV\n\nCredits: @drowsynicolas")
-ogSection:AddToggle("Disable Gun Animations", function(bool)
-    ogFeatures.blockAnims = bool
+local gunFeaturesSection = myTab:AddSection("Gun Features", "Gun Tweaks")
+gunFeaturesSection:AddParagraph("Additional Info", "This plugin works for both MM2 and MMV\n\nCredits: @drowsynicolas")
+gunFeaturesSection:AddToggle("Disable Gun Animations", function(bool)
+    gunFeatures.blockAnims = bool
     if bool then
         enableBlockAnims()
     else
         disableBlockAnims()
     end
 end)
-ogSection:AddToggle("Equip/Unequip Gun Sound", function(bool)
-    ogFeatures.equipSound = bool
+gunFeaturesSection:AddToggle("Equip/Unequip Gun Sound", function(bool)
+    gunFeatures.equipSound = bool
     if bool then
         enableEquipSound()
     else
         disableEquipSound()
+    end
+end)
+gunFeaturesSection:AddToggle("Gun Force Field", function(bool)
+    gunFeatures.forceField = bool
+    if bool then
+        enableForceField()
+    else
+        disableForceField()
+    end
+end)
+gunFeaturesSection:AddColorpicker("Force Field Color", Color3.fromRGB(0, 100, 255), function(color)
+    forceFieldColor = color
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            local sphere = obj:FindFirstChild(FORCE_FIELD_NAME)
+            if sphere then
+                sphere.Color = color
+            end
+        end
+    end
+end)
+gunFeaturesSection:AddToggle("Custom Dropped Gun Fire Color", function(bool)
+    gunFeatures.fireColor = bool
+    if bool then
+        enableFireColor()
+    else
+        disableFireColor()
+    end
+end)
+gunFeaturesSection:AddColorpicker("Dropped Gun Fire Color", Color3.fromRGB(0, 100, 255), function(color)
+    customFireColor = color
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "GunDrop" and obj:IsA("Part") then
+            local fire = obj:FindFirstChild("Fire")
+            if fire and fire:IsA("Fire") then
+                fire.Color = color
+                fire.SecondaryColor = color
+            end
+        end
     end
 end)
 
@@ -860,13 +1022,13 @@ for _, mapEntry in ipairs(MAP_LIST) do
         local perk = normalizePerk(text)
         if perk then
             autoPerkChoices[mapEntry.keyword] = perk
-            shared.Notify("Auto Perk: \"" .. perk .. "\" selected for " .. mapEntry.name, 5)
+            shared.Notify("Auto Perk: \"" .. perk .. "\" selected for " .. mapEntry.name, 3)
             if autoPerkEnabled then
                 tryAutoEquip()
             end
         else
             autoPerkChoices[mapEntry.keyword] = "Footsteps"
-            shared.Notify("Auto Perk: invalid input, fallback to Footsteps", 5)
+            shared.Notify("Auto Perk: invalid input, fallback to Footsteps", 3)
             if autoPerkEnabled then
                 tryAutoEquip()
             end
@@ -875,10 +1037,14 @@ for _, mapEntry in ipairs(MAP_LIST) do
 end
 
 RootNicolas:GiveTask(function()
-    ogFeatures.blockAnims = false
-    ogFeatures.equipSound = false
+    gunFeatures.blockAnims = false
+    gunFeatures.equipSound = false
+    gunFeatures.forceField = false
+    gunFeatures.fireColor = false
     disableBlockAnims()
     disableEquipSound()
+    disableForceField()
+    disableFireColor()
     for character, data in pairs(charData) do
         cleanCharacter(character)
     end
