@@ -356,7 +356,7 @@ if LocalPlayer.Character then
     onCharacterAdded(LocalPlayer.Character)
 end
 
-local gunFeaturesSection = myTab:AddSection("Gun Features", "Gun Tweaks")
+local gunFeaturesSection = myTab:AddSection("Gun Features", "Gun Stuff")
 gunFeaturesSection:AddParagraph("Additional Info", "This plugin works for both MM2 and MMV\n\nCredits: @drowsynicolas")
 gunFeaturesSection:AddToggle("Disable Gun Animations", function(bool)
     gunFeatures.blockAnims = bool
@@ -382,6 +382,14 @@ gunFeaturesSection:AddToggle("Gun Force Field", function(bool)
         disableForceField()
     end
 end)
+gunFeaturesSection:AddToggle("Custom Dropped Gun Fire Color", function(bool)
+    gunFeatures.fireColor = bool
+    if bool then
+        enableFireColor()
+    else
+        disableFireColor()
+    end
+end)
 gunFeaturesSection:AddColorpicker("Force Field Color", Color3.fromRGB(0, 100, 255), function(color)
     forceFieldColor = color
 
@@ -392,14 +400,6 @@ gunFeaturesSection:AddColorpicker("Force Field Color", Color3.fromRGB(0, 100, 25
                 sphere.Color = color
             end
         end
-    end
-end)
-gunFeaturesSection:AddToggle("Custom Dropped Gun Fire Color", function(bool)
-    gunFeatures.fireColor = bool
-    if bool then
-        enableFireColor()
-    else
-        disableFireColor()
     end
 end)
 gunFeaturesSection:AddColorpicker("Dropped Gun Fire Color", Color3.fromRGB(0, 100, 255), function(color)
