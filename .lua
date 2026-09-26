@@ -1045,11 +1045,12 @@ for _, mapEntry in ipairs(MAP_LIST) do
     end)
 end
 
-local itemTintSection = myTab:AddSection("Item Tint", "cosmetic")
+local itemTintSection = myTab:AddSection("Tool Tint", "cosmetic")
 itemTintSection:AddParagraph("Additional Info", "tints any tool you hold\n\nCredits: @drowsynicolas")
 
 local toolTintEnabled = false
 local toolTintColor = Color3.fromRGB(255, 255, 255)
+local toolTintTransparency = 0.5
 local toolTintCharacterConnection = nil
 local toolTintChildConnection = nil
 
@@ -1061,7 +1062,6 @@ local function applyToolTint(tool)
     if not highlight then
         highlight = Instance.new("Highlight")
         highlight.Name = "ToolTint"
-        highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 1
         highlight.DepthMode = Enum.HighlightDepthMode.Occluded
         highlight.Adornee = tool
@@ -1069,6 +1069,7 @@ local function applyToolTint(tool)
     end
 
     highlight.FillColor = toolTintColor
+    highlight.FillTransparency = toolTintTransparency
 end
 
 local function removeToolTint(tool)
@@ -1144,6 +1145,22 @@ itemTintSection:AddToggle("Tool Tint", function(bool)
         enableToolTint()
     else
         disableToolTint()
+    end
+end)
+
+itemTintSection:AddSlider("Tint Transparency", 0.1, 1, 0.5, function(value)
+    toolTintTransparency = value
+
+    local char = LocalPlayer.Character
+    if char then
+        for _, object in ipairs(char:GetChildren()) do
+            if object:IsA("Tool") then
+                local highlight = object:FindFirstChild("ToolTint")
+                if highlight then
+                    highlight.FillTransparency = value
+                end
+            end
+        end
     end
 end)
 
