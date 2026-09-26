@@ -1148,23 +1148,21 @@ itemTintSection:AddToggle("Tool Tint", function(bool)
     end
 end)
 
-itemTintSection:AddTextBox("Tint Transparency (0.1-1)", function(text)
-    local value = tonumber(text)
-    if value and value >= 0.1 and value <= 1 then
-        toolTintTransparency = value
+itemTintSection:AddSlider("Tint Transparency", 1, 10, 5, function(value)
+    toolTintTransparency = value / 10
 
-        local char = LocalPlayer.Character
-        if char then
-            for _, object in ipairs(char:GetChildren()) do
-                if object:IsA("Tool") then
-                    local highlight = object:FindFirstChild("ToolTint")
-                    if highlight then
-                        highlight.FillTransparency = value
-                    end
+    local char = LocalPlayer.Character
+    if char then
+        for _, object in ipairs(char:GetChildren()) do
+            if object:IsA("Tool") then
+                local highlight = object:FindFirstChild("ToolTint")
+                if highlight then
+                    highlight.FillTransparency = toolTintTransparency
                 end
             end
         end
-    else
+    end
+end)
         shared.Notify("Tool Tint: invalid transparency, use 0.1 to 1", 3)
     end
 end)
