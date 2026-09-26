@@ -5,6 +5,7 @@
 -- Client Sided Message
 -- Estimated Server Pos
 -- Auto Perk
+-- Tool Tint
 
 local table_insert = table.insert
 local nicolas = {}
@@ -1044,6 +1045,124 @@ for _, mapEntry in ipairs(MAP_LIST) do
     end)
 end
 
+local itemTintSection = myTab:AddSection("Item Tint", "cosmetic")
+itemTintSection:AddParagraph("Additional Info", "tints any tool you hold\n\nCredits: @drowsynicolas")
+
+local toolTintEnabled = false
+local toolTintColor = Color3.fromRGB(255, 255, 255)
+local toolTintCharacterConnection = nil
+local toolTintChildConnection = nil
+
+local function applyToolTint(tool)
+    if not tool:IsA("Tool") then return end
+
+    local highlight = tool:FindFirstChild("ToolTint")
+
+    if not highlight then
+        highlight = Instance.new("Highlight")
+        highlight.Name = "ToolTint"
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 1
+        highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+        highlight.Adornee = tool
+        highlight.Parent = tool
+    end
+
+    highlight.FillColor = toolTintColor
+end
+
+local function removeToolTint(tool)
+    if not tool:IsA("Tool") then return end
+    local highlight = tool:FindFirstChild("ToolTint")
+    if highlight then
+        highlight:Destroy()
+    end
+end
+
+local function monitorToolTintCharacter(character)
+    for _, object in ipairs(character:GetChildren()) do
+        applyToolTint(object)
+    end
+
+    if toolTintChildConnection then
+        toolTintChildConnection:Disconnect()
+    end
+
+    toolTintChildConnection = character.ChildAdded:Connect(function(object)
+        if toolTintEnabled then
+            applyToolTint(object)
+        end
+    end)
+end
+
+local function clearAllToolTints()
+    local char = LocalPlayer.Character
+    if char then
+        for _, object in ipairs(char:GetChildren()) do
+            removeToolTint(object)
+        end
+    end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        for _, object in ipairs(backpack:GetChildren()) do
+            removeToolTint(object)
+        end
+    end
+end
+
+local function enableToolTint()
+    toolTintEnabled = true
+
+    if toolTintCharacterConnection then
+        toolTintCharacterConnection:Disconnect()
+    end
+
+    toolTintCharacterConnection = LocalPlayer.CharacterAdded:Connect(monitorToolTintCharacter)
+
+    if LocalPlayer.Character then
+        monitorToolTintCharacter(LocalPlayer.Character)
+    end
+end
+
+local function disableToolTint()
+    toolTintEnabled = false
+
+    if toolTintCharacterConnection then
+        toolTintCharacterConnection:Disconnect()
+        toolTintCharacterConnection = nil
+    end
+    if toolTintChildConnection then
+        toolTintChildConnection:Disconnect()
+        toolTintChildConnection = nil
+    end
+
+    clearAllToolTints()
+end
+
+itemTintSection:AddToggle("Tool Tint", function(bool)
+    if bool then
+        enableToolTint()
+    else
+        disableToolTint()
+    end
+end)
+
+itemTintSection:AddColorpicker("Tool Tint Color", Color3.fromRGB(255, 255, 255), function(color)
+    toolTintColor = color
+
+    local char = LocalPlayer.Character
+    if char then
+        for _, object in ipairs(char:GetChildren()) do
+            if object:IsA("Tool") then
+                local highlight = object:FindFirstChild("ToolTint")
+                if highlight then
+                    highlight.FillColor = color
+                end
+            end
+        end
+    end
+end)
+
 RootNicolas:GiveTask(function()
     gunFeatures.blockAnims = false
     gunFeatures.equipSound = false
@@ -1068,4 +1187,5 @@ RootNicolas:GiveTask(function()
     disableAntiTrade()
     disableServerPos()
     stopAutoPerk()
+    disableToolTint()
 end)
