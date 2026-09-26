@@ -1163,9 +1163,7 @@ itemTintSection:AddSlider("Tint Transparency", 1, 10, 5, function(value)
         end
     end
 end)
-        shared.Notify("Tool Tint: invalid transparency, use 0.1 to 1", 3)
-    end
-end)
+        
 
 itemTintSection:AddColorpicker("Tool Tint Color", Color3.fromRGB(255, 255, 255), function(color)
     toolTintColor = color
